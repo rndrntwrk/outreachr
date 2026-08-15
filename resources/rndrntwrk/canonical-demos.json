@@ -1,0 +1,279 @@
+{
+  "packageId": "rndrntwrk-canonical-demos",
+  "packageVersion": "1.0.0",
+  "demos": [
+    {
+      "id": "d1-sw4p-programmable-settlement",
+      "name": "SW4P Programmable Settlement",
+      "category": "Settlement / Payments",
+      "status": "draft",
+      "baselineRepository": "unbound",
+      "baselineCommitSha": "0000000000000000000000000000000000000000",
+      "branchConvention": "hackathon/{event}/sw4p-settlement",
+      "expectedBaselineHours": 20,
+      "coreAssets": [
+        "settlement instruction API",
+        "EVM and Solana route adapter",
+        "receipt and reconciliation view"
+      ],
+      "evidenceRequirements": [
+        "finality proof",
+        "fee and gas policy",
+        "failure recovery record",
+        "reconciled settlement receipt"
+      ],
+      "approvedClaims": [
+        "The demo carries one application settlement instruction through route selection, execution state, finality, proof and reconciliation."
+      ]
+    },
+    {
+      "id": "d2-gas-abstracted-creator-payouts",
+      "name": "Gas-Abstracted Creator Payouts",
+      "category": "Creator Payments",
+      "status": "draft",
+      "baselineRepository": "unbound",
+      "baselineCommitSha": "0000000000000000000000000000000000000000",
+      "branchConvention": "hackathon/{event}/creator-payouts",
+      "expectedBaselineHours": 24,
+      "coreAssets": [
+        "creator payout instruction",
+        "gas sponsorship and recovery policy",
+        "fee and payout split routing"
+      ],
+      "evidenceRequirements": [
+        "quoted recipient amount",
+        "gas policy trace",
+        "fee route",
+        "final payout receipt"
+      ],
+      "approvedClaims": [
+        "The demo shows a creator receiving the intended payout while the application applies a declared gas and fee policy."
+      ]
+    },
+    {
+      "id": "d3-alice-governed-mcp-operator",
+      "name": "Alice Governed MCP Operator",
+      "category": "AI Agents / Developer Infrastructure",
+      "status": "draft",
+      "baselineRepository": "rndrntwrk/milaidy",
+      "baselineCommitSha": "4dfb59cd2a8abdb1ba0771bbda7b18a9792d829c",
+      "branchConvention": "hackathon/{event}/alice-mcp-operator",
+      "expectedBaselineHours": 28,
+      "coreAssets": [
+        "bounded program envelope",
+        "approved MCP tool set",
+        "human approval queue",
+        "trace and cost record"
+      ],
+      "evidenceRequirements": [
+        "selected context disclosure",
+        "tool approval event",
+        "idempotent action",
+        "complete agent trace"
+      ],
+      "approvedClaims": [
+        "The demo shows a bounded agent using approved MCP tools, recording approvals and returning an auditable result."
+      ]
+    },
+    {
+      "id": "d4-white-label-community-agent",
+      "name": "White-Label Community Agent",
+      "category": "AI Agents / Community Infrastructure",
+      "status": "draft",
+      "baselineRepository": "rndrntwrk/milaidy",
+      "baselineCommitSha": "4dfb59cd2a8abdb1ba0771bbda7b18a9792d829c",
+      "branchConvention": "hackathon/{event}/white-label-agent",
+      "expectedBaselineHours": 18,
+      "coreAssets": [
+        "agent deployment template",
+        "project knowledge package",
+        "role and permission policy",
+        "human handoff surface"
+      ],
+      "evidenceRequirements": [
+        "project-specific identity",
+        "bounded tool use",
+        "budget or spend limit",
+        "founder-reviewable handoff"
+      ],
+      "approvedClaims": [
+        "The demo deploys one branded project operator with selected knowledge, tools, permissions, budget and human handoff."
+      ]
+    },
+    {
+      "id": "d5-human-agent-live-studio",
+      "name": "Human + Agent Live Studio",
+      "category": "Media / Creator Technology",
+      "status": "draft",
+      "baselineRepository": "rndrntwrk/stream-plugin",
+      "baselineCommitSha": "a920fc07ae6af07706bd26154e9a5d5bd43119fa",
+      "branchConvention": "hackathon/{event}/human-agent-studio",
+      "expectedBaselineHours": 30,
+      "coreAssets": [
+        "live program room",
+        "agent show-control path",
+        "scene and chat state",
+        "clip and sponsor-delivery hooks"
+      ],
+      "evidenceRequirements": [
+        "human override",
+        "agent-operated scene or tool action",
+        "useful work artifact",
+        "recorded sponsor delivery"
+      ],
+      "approvedClaims": [
+        "The demo places human and agent operators inside one live program state with recorded scene, tool and sponsor actions."
+      ]
+    },
+    {
+      "id": "d6-rndrntwrk-coordination-layer",
+      "name": "RNDRNTWRK Coordination Layer",
+      "category": "Community / Ecosystem Operations",
+      "status": "draft",
+      "baselineRepository": "unbound",
+      "baselineCommitSha": "0000000000000000000000000000000000000000",
+      "branchConvention": "hackathon/{event}/coordination-layer",
+      "expectedBaselineHours": 34,
+      "coreAssets": [
+        "program manifest",
+        "agent and human role handoffs",
+        "media, play and advertising hooks",
+        "settlement and economic close"
+      ],
+      "evidenceRequirements": [
+        "founder-defined objective",
+        "shared program state",
+        "completed cross-product handoff",
+        "economic close record"
+      ],
+      "approvedClaims": [
+        "The demo coordinates agents, media, play, advertising and settlement around one founder-defined program objective."
+      ]
+    },
+    {
+      "id": "d7-555-arcade-agent-native-play",
+      "name": "555 Arcade: Agent-Native Play",
+      "category": "Gaming / Consumer AI",
+      "status": "draft",
+      "baselineRepository": "rndrntwrk/555-arcade-plugin",
+      "baselineCommitSha": "23d1bc3a8e03f57130af997fd0ba36f1d7f4fb7b",
+      "branchConvention": "hackathon/{event}/agent-native-arcade",
+      "expectedBaselineHours": 28,
+      "coreAssets": [
+        "agent player and game-master roles",
+        "custom game creation path",
+        "tournament or session coordination",
+        "playable sponsor activation"
+      ],
+      "evidenceRequirements": [
+        "human and agent play loop",
+        "agent-created or adapted game",
+        "learning or coordination trace",
+        "playable sponsor experience"
+      ],
+      "approvedClaims": [
+        "The demo lets humans and agents play, learn, coordinate and create a custom game inside one shared Arcade session."
+      ]
+    },
+    {
+      "id": "d8-sw4p-earn-composable-crypto-economies",
+      "name": "SW4P Earn: Composable Crypto Economies",
+      "category": "Crypto Economics / Rewards",
+      "status": "draft",
+      "baselineRepository": "unbound",
+      "baselineCommitSha": "0000000000000000000000000000000000000000",
+      "branchConvention": "hackathon/{event}/composable-economies",
+      "expectedBaselineHours": 30,
+      "coreAssets": [
+        "source-labelled funding registry",
+        "economic composition rules",
+        "claims and payout lifecycle",
+        "reconciliation statement"
+      ],
+      "evidenceRequirements": [
+        "multiple independent funding sources",
+        "programmable allocation rules",
+        "claim or payout receipt",
+        "zero unexplained reconciliation delta"
+      ],
+      "approvedClaims": [
+        "The demo composes independently labelled fees, budgets, revenue, partner assets, payouts, community shares and reserves."
+      ]
+    },
+    {
+      "id": "d9-rndrntwrk-ctrl",
+      "name": "RNDRNTWRK CTRL",
+      "category": "Agent Infrastructure / Operations",
+      "status": "draft",
+      "baselineRepository": "unbound",
+      "baselineCommitSha": "0000000000000000000000000000000000000000",
+      "branchConvention": "hackathon/{event}/rndrntwrk-ctrl",
+      "expectedBaselineHours": 36,
+      "coreAssets": [
+        "authority and budget controls",
+        "deployment and adapter boundary",
+        "trace and cost view",
+        "stop and recovery workflow"
+      ],
+      "evidenceRequirements": [
+        "governed action",
+        "correlated trace",
+        "cost attribution",
+        "rollback or recovery proof"
+      ],
+      "approvedClaims": [
+        "The demo governs agent, tool, media and economic actions through one authority, budget, trace, cost and recovery model."
+      ]
+    },
+    {
+      "id": "d10-cross-community-composable-economy",
+      "name": "Cross-Community Composable Economy",
+      "category": "Network Economics",
+      "status": "draft",
+      "baselineRepository": "unbound",
+      "baselineCommitSha": "0000000000000000000000000000000000000000",
+      "branchConvention": "hackathon/{event}/cross-community-economy",
+      "expectedBaselineHours": 42,
+      "coreAssets": [
+        "alliance program manifest",
+        "agent, media, game and advertising handoffs",
+        "multi-community settlement routes",
+        "composable economic statement"
+      ],
+      "evidenceRequirements": [
+        "independent community asset records",
+        "shared program activity",
+        "cross-community distribution receipts",
+        "reconciled economic statement"
+      ],
+      "approvedClaims": [
+        "The demo lets independent communities keep their own assets while sharing agents, media, games, ads and a reconciled economic program."
+      ]
+    },
+    {
+      "id": "d11-rndrntwrk-ads-programmable-sponsor-experiences",
+      "name": "RNDRNTWRK Ads: Programmable Sponsor Experiences",
+      "category": "Advertising / Creator Monetization",
+      "status": "draft",
+      "baselineRepository": "unbound",
+      "baselineCommitSha": "0000000000000000000000000000000000000000",
+      "branchConvention": "hackathon/{event}/programmable-sponsor-experience",
+      "expectedBaselineHours": 26,
+      "coreAssets": [
+        "sponsor brief intake",
+        "agent creative and program planning",
+        "live and playable delivery",
+        "analytics and settlement handoff"
+      ],
+      "evidenceRequirements": [
+        "brief-to-creative trace",
+        "live or playable delivery proof",
+        "audience action record",
+        "settlement-ready campaign receipt"
+      ],
+      "approvedClaims": [
+        "The demo turns a sponsor brief into live and playable creative, audience actions, delivery evidence and a settlement-ready campaign outcome."
+      ]
+    }
+  ]
+}
