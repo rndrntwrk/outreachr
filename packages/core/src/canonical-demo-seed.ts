@@ -29,10 +29,15 @@ const ZERO_COMMIT_SHA = '0'.repeat(40);
 const PACKAGE_ID = 'rndrntwrk-canonical-demos';
 const PREFERENCE_KEY = `canonical-demo-seed-import:${PACKAGE_ID}`;
 
-const PublicRepositorySchema = z.string().trim().min(1).max(4_096).refine(
-  (value) => value === 'unbound' || /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(value),
-  'Use owner/repository or the literal unbound',
-);
+const PublicRepositorySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(4_096)
+  .refine(
+    (value) => value === 'unbound' || /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(value),
+    'Use owner/repository or the literal unbound',
+  );
 
 export const CanonicalDemoSeedItemSchema = z
   .object({
@@ -45,7 +50,10 @@ export const CanonicalDemoSeedItemSchema = z
     branchConvention: z.string().trim().min(1).max(1_000),
     expectedBaselineHours: z.number().int().min(1).max(1_000),
     coreAssets: z.array(z.string().trim().min(1).max(10_000)).min(1).max(1_000),
-    evidenceRequirements: z.array(z.string().trim().min(1).max(10_000)).min(1).max(1_000),
+    evidenceRequirements: z
+      .array(z.string().trim().min(1).max(10_000))
+      .min(1)
+      .max(1_000),
     approvedClaims: z.array(z.string().trim().min(1).max(10_000)).min(1).max(1_000),
   })
   .superRefine((item, context) => {
@@ -55,7 +63,8 @@ export const CanonicalDemoSeedItemSchema = z
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['baselineCommitSha'],
-        message: 'Unbound demo baselines must use the all-zero sentinel, and bound baselines must not',
+        message:
+          'Unbound demo baselines must use the all-zero sentinel, and bound baselines must not',
       });
     }
     if (item.status === 'approved' && zeroSha) {
@@ -76,14 +85,15 @@ export const CanonicalDemoSeedPackageSchema = z
   })
   .superRefine((seed, context) => {
     const ids = seed.demos.map((item) => item.id);
-    if (new Set(ids).size !== ids.length) {
+    const idSet = new Set<string>(ids);
+    if (idSet.size !== ids.length) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['demos'],
         message: 'Canonical demo seed IDs must be unique',
       });
     }
-    const missing = [...EXPECTED_DEMO_IDS].filter((id) => !ids.includes(id as never));
+    const missing = [...EXPECTED_DEMO_IDS].filter((id) => !idSet.has(id));
     if (missing.length) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -94,13 +104,23 @@ export const CanonicalDemoSeedPackageSchema = z
   });
 export type CanonicalDemoSeedPackage = z.output<typeof CanonicalDemoSeedPackageSchema>;
 
-const CanonicalDemoSeedImportMetadataSchema = z.object({
-  packageVersion: z.string().min(1),
-  logicalDigestSha256: Sha256Schema,
-  importedAt: IsoDateTimeSchema,
-  demoCount: z.number().int().min(1),
-  versionDigests: z.record(IdSchema, Sha256Schema),
-});
+const CanonicalDemoSeedImportMetadataSchema = z
+  .object({
+    packageVersion: z.string().min(1),
+    logicalDigestSha256: Sha256Schema,
+    importedAt: IsoDateTimeSchema,
+    demoCount: z.number().int().min(1),
+    versionDigests: z.record(IdSchema, Sha256Schema),
+  })
+  .superRefine((metadata, context) => {
+    if (Object.keys(metadata.versionDigests).length !== metadata.demoCount) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['versionDigests'],
+        message: 'Canonical demo import metadata must retain one digest per imported demo',
+      });
+    }
+  });
 type CanonicalDemoSeedImportMetadata = z.output<
   typeof CanonicalDemoSeedImportMetadataSchema
 >;
