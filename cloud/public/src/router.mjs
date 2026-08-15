@@ -158,7 +158,7 @@ function attachmentName(key) {
   return value.replace(/[^A-Za-z0-9._-]/gu, '_');
 }
 
-export async function routePublicRequest(request, env = {}, _context = undefined) {
+export async function routePublicRequest(request, env = {}) {
   const id = requestId();
   const method = request.method?.toUpperCase?.() ?? 'GET';
   const headOnly = method === 'HEAD';
