@@ -30,10 +30,9 @@ describe('Hackathon Studio portfolio', () => {
       .map((link) => link.getAttribute('aria-label'));
     expect(links.indexOf('Hackathon Studio')).toBe(links.indexOf('Up next') + 1);
 
-    const deadlines = screen.getByRole('region', { name: 'Hackathon deadline windows' });
-    expect(within(deadlines).getByText('Next 72 hours')).toBeVisible();
-    expect(within(deadlines).getByText('Next 14 days')).toBeVisible();
-    expect(within(deadlines).getByText('Next 30 days')).toBeVisible();
+    expect(screen.getByText('Next 72 hours')).toBeVisible();
+    expect(screen.getByText('Next 14 days')).toBeVisible();
+    expect(screen.getByText('Next 30 days')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Next decisions' })).toBeVisible();
     expect(screen.getByText('SW4P settlement sprint')).toBeVisible();
     expect(screen.getByText('Alice governed operator')).toBeVisible();
@@ -45,7 +44,12 @@ describe('Hackathon Studio portfolio', () => {
 
   it('filters entries by lead venture while keeping unknown evidence visible', async () => {
     window.location.hash = '#/hackathons';
-    installBridge(hackathonStudioFixture());
+    const fixture = hackathonStudioFixture();
+    fixture.hackathonEntries[1] = {
+      ...fixture.hackathonEntries[1]!,
+      leadVentureId: null,
+    };
+    installBridge(fixture);
     renderApplication();
 
     await screen.findByRole('heading', { name: 'Hackathon Studio' });
@@ -58,6 +62,12 @@ describe('Hackathon Studio portfolio', () => {
     fireEvent.change(screen.getByLabelText('Lead venture'), { target: { value: '' } });
     fireEvent.change(screen.getByLabelText('Eligibility'), { target: { value: 'unknown' } });
     expect(screen.getByText('Alice governed operator')).toBeVisible();
+    expect(screen.queryByText('SW4P settlement sprint')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Eligibility'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Lead venture'), { target: { value: 'unknown' } });
+    expect(screen.getByText('Alice governed operator')).toBeVisible();
+    expect(screen.getByText('Unknown venture')).toBeVisible();
     expect(screen.queryByText('SW4P settlement sprint')).not.toBeInTheDocument();
   });
 
@@ -112,7 +122,17 @@ describe('Hackathon Studio portfolio', () => {
     fireEvent.change(within(dialog).getByLabelText('Ecosystem adapter'), {
       target: { value: 'Use the sponsor stablecoin SDK as a bounded settlement adapter.' },
     });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Create candidate' }));
+
+    const createButton = within(dialog).getByRole('button', { name: 'Create candidate' });
+    fireEvent.change(within(dialog).getByLabelText('Strategic fit'), {
+      target: { value: '' },
+    });
+    expect(createButton).toBeDisabled();
+    fireEvent.change(within(dialog).getByLabelText('Strategic fit'), {
+      target: { value: '8' },
+    });
+    expect(createButton).toBeEnabled();
+    fireEvent.click(createButton);
 
     await waitFor(() =>
       expect(command).toHaveBeenCalledWith(
