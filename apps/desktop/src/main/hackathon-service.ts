@@ -21,8 +21,27 @@ export class HackathonService extends HackathonServiceBase {
   override async saveDistribution(
     input: HackathonDistributionSaveInput,
   ): Promise<HackathonDistributionSummary> {
-    if (input.id) return super.saveDistribution(input);
-    const existingId = (await this.getEntry(input.entryId)).distributionPlan?.id;
-    return super.saveDistribution(existingId ? { ...input, id: existingId } : input);
+    const existing = (await this.getEntry(input.entryId)).distributionPlan;
+    if (input.id && existing && input.id !== existing.id) {
+      throw new Error('A hackathon entry already has a different distribution plan.');
+    }
+
+    const normalized = existing && !input.id ? { ...input, id: existing.id } : input;
+    if (!existing) {
+      const draft = await super.saveDistribution({ ...normalized, status: 'draft' });
+      const identified = { ...normalized, id: draft.id };
+      if (input.status === 'draft') return draft;
+      if (input.status === 'cancelled') {
+        return super.saveDistribution({ ...identified, status: 'cancelled' });
+      }
+      const approved = await super.saveDistribution({ ...identified, status: 'approved' });
+      if (input.status === 'approved') return approved;
+      return super.saveDistribution(identified);
+    }
+
+    if (existing.status === 'draft' && ['active', 'completed'].includes(input.status)) {
+      await super.saveDistribution({ ...normalized, status: 'approved' });
+    }
+    return super.saveDistribution(normalized);
   }
 }
