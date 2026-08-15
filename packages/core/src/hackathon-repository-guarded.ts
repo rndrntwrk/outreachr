@@ -1,4 +1,4 @@
-import { HackathonRepository as PersistedHackathonRepository } from './hackathon-repository-final.js';
+import { HackathonRepository as ReviewedHackathonRepository } from './hackathon-repository-reviewed.js';
 import {
   HackathonCycleSchema,
   HackathonRuleSchema,
@@ -17,7 +17,7 @@ interface CycleDigestRow {
  * lower persistence layers execute. Reviewed rule digests are derived state;
  * callers cannot write them directly or bypass reviewRule.
  */
-export class HackathonRepository extends PersistedHackathonRepository {
+export class HackathonRepository extends ReviewedHackathonRepository {
   override upsertCycle(input: HackathonCycleInput): HackathonCycle {
     const value = HackathonCycleSchema.parse(input);
     const existing = this.vault.one<CycleDigestRow>(
