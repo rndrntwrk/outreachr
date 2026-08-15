@@ -1,1 +1,9 @@
-* @lalalune
+* @rndrntwrk
+/packages/core/ @rndrntwrk
+/packages/connectors/ @rndrntwrk
+/packages/agents/ @rndrntwrk
+/packages/mcp/ @rndrntwrk
+/apps/desktop/src/main/ @rndrntwrk
+/.github/workflows/ @rndrntwrk
+/scripts/ @rndrntwrk
+/SECURITY.md @rndrntwrk
