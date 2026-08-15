@@ -1,4 +1,4 @@
-import { OpportunityRepository as PersistedOpportunityRepository } from './opportunity-repository.js';
+import { OpportunityRepository as ReviewedOpportunityRepository } from './opportunity-repository-reviewed.js';
 import {
   OpportunitySourceSchema,
   type OpportunitySource,
@@ -12,7 +12,7 @@ export type { OrganizationUpsertInput } from './opportunity-repository.js';
  * become accepted or rejected only through reviewSource, which records the
  * founder decision in the audit chain.
  */
-export class OpportunityRepository extends PersistedOpportunityRepository {
+export class OpportunityRepository extends ReviewedOpportunityRepository {
   override attachSource(input: OpportunitySourceInput): OpportunitySource {
     const value = OpportunitySourceSchema.parse(input);
     if (value.reviewState !== 'pending' || value.reviewedAt !== null) {
