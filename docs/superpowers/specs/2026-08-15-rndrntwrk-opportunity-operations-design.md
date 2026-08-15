@@ -1,7 +1,7 @@
 # RNDRNTWRK Opportunity Operations for Outreachr
 
 **Date:** 2026-08-15  
-**Status:** Approved design, pending implementation plan  
+**Status:** Founder-approved direction; written specification awaiting review  
 **Repository:** `rndrntwrk/outreachr`
 
 ## 1. Purpose
@@ -28,9 +28,9 @@ The Opportunity Atlas remains the broad public intelligence system. Outreachr st
 1. Fork governance and a reproducible RNDRNTWRK baseline release.
 2. Operational qualification of the unmodified application with one SW4P capital mandate.
 3. Explicit separation of legal entities, ventures, product narratives, and capital mandates.
-4. First-class opportunity and application records beyond investors.
+4. First-class opportunity, track, and application records beyond investors.
 5. Deterministic, source-aware import from the RNDRNTWRK Opportunity Atlas.
-6. Application assets, answers, milestones, events, receipts, deadlines, and review state.
+6. Application assets, answers, milestones, events, submission tracks, receipts, deadlines, and review state.
 7. New desktop views and commands for ventures, opportunities, and applications.
 8. Proposal-only Alice/RNDRNTWRK CTRL access through local MCP.
 9. Migration, backup, privacy, audit, accessibility, native-build, and end-to-end coverage.
@@ -84,20 +84,37 @@ Email, calendar, application portals, GitHub evidence and partner actions
 
 ## 4. Design principles
 
-1. **One legal story per mandate.** A product narrative may differ from the parent narrative, but every capital or accelerator application must resolve to one legal entity and one cap-table identity.
+1. **One legal story per mandate.** A product narrative may differ from the parent narrative, but every capital or accelerator application resolves to one legal entity and one cap-table identity.
 2. **Products are not automatically entities.** SW4P, SW4P Earn, Alice, 555stream, 555 Arcade, RNDRNTWRK Ads, and RNDRNTWRK CTRL can have distinct narratives without implying distinct companies.
-3. **Public intelligence and private execution remain separate.** Importing an opportunity never creates outreach, a draft, or an application automatically.
-4. **Agents propose; founders apply.** Alice may research, rank, draft, summarize, and create pending proposals. She may not send, submit, sign, accept terms, or disclose unselected records.
-5. **Evidence travels with the decision.** Every opportunity, application answer, deadline, conflict, and external claim retains source, freshness, confidence, and review state where applicable.
-6. **Backward compatibility first.** Existing single-round investor workflows and current v9 vaults continue to open and work after every migration.
-7. **Upstream-friendly isolation.** Generic Outreachr improvements remain separable from RNDRNTWRK-specific domain modules, data packages, and terminology.
-8. **No hidden collaboration model.** The first release remains a single-owner local vault. Team work happens through GitHub and non-secret task/evidence systems.
+3. **A submission can combine components without mixing entities.** One venture leads each submission; supporting ventures and sponsor tracks are recorded explicitly.
+4. **Public intelligence and private execution remain separate.** Importing an opportunity never creates outreach, a draft, or an application automatically.
+5. **Agents propose; founders apply.** Alice may research, rank, draft, summarize, and create pending proposals. She may not send, submit, sign, accept terms, or disclose unselected records.
+6. **Evidence travels with the decision.** Every opportunity, application answer, deadline, conflict, and external claim retains source, freshness, confidence, and review state where applicable.
+7. **Backward compatibility first.** Existing single-round investor workflows and current v9 vaults continue to open and work after every migration.
+8. **Upstream-friendly isolation.** Generic Outreachr improvements remain separable from RNDRNTWRK-specific domain modules, data packages, and terminology.
+9. **No hidden collaboration model.** The first release remains a single-owner local vault. Team work happens through GitHub and non-secret task/evidence systems.
 
-## 5. Domain model
+## 5. Existing investor domain remains canonical
+
+Direct VC, angel, scout, and fund outreach continues to use the current firm, person, round, target, and investor-pipeline model.
+
+The new opportunity domain covers formal programs and external processes such as:
+
+- accelerators and residencies;
+- open capital-application programs;
+- grants;
+- hackathons and sponsor bounties;
+- startup and cloud-credit programs;
+- sponsors;
+- strategic and design-partner programs.
+
+An investor firm is not duplicated as a generic opportunity merely because the founder intends to contact it. A fund appears in the opportunity domain only when there is a distinct formal application process or program cycle to manage.
+
+## 6. Domain model
 
 The storage changes are split into migrations so each domain can be tested and released independently.
 
-### 5.1 Migration v10: legal entity, venture, narrative, and mandate
+### 6.1 Migration v10: legal entity, venture, narrative, and mandate
 
 #### `legal_entities`
 
@@ -108,9 +125,9 @@ Required fields:
 - `id`
 - `name`
 - `jurisdiction`
-- `entity_type`
+- `entity_type`: `corporation`, `llc`, `foundation`, `partnership`, `sole_proprietor`, or `other`
 - `registration_reference` nullable
-- `status`
+- `status`: `active`, `inactive`, or `dissolved`
 - `created_at`
 - `updated_at`
 
@@ -128,8 +145,8 @@ Required fields:
 - `slug`
 - `category`
 - `one_liner`
-- `stage`
-- `status`
+- `stage`: `concept`, `prototype`, `pre_production`, `production`, `growth`, or `archived`
+- `status`: `active`, `paused`, or `archived`
 - `created_at`
 - `updated_at`
 
@@ -153,7 +170,7 @@ Required fields:
 - `solution`
 - `why_now`
 - `traction_evidence`
-- `disclosure_policy`
+- `disclosure_policy`: `internal`, `safe_for_outreach`, `meeting_only`, or `diligence_only`
 - `content_sha256`
 - `active`
 - `created_at`
@@ -163,7 +180,7 @@ No application refers to mutable narrative text directly. It records the narrati
 
 #### `capital_mandates`
 
-Represents one raise, accelerator capital process, grant strategy, or other capital objective.
+Represents one raise, accelerator-capital process, grant strategy, or related capital objective.
 
 Required fields:
 
@@ -171,18 +188,18 @@ Required fields:
 - `legal_entity_id`
 - `lead_venture_id`
 - `name`
-- `mandate_type`
+- `mandate_type`: `fundraise`, `accelerator`, `grant`, `strategic`, or `sponsor`
 - `stage`
 - `target_amount_usd` nullable
 - `minimum_check_usd` nullable
 - `maximum_check_usd` nullable
-- `status`
+- `status`: `planning`, `active`, `paused`, or `closed`
 - `opened_on` nullable
 - `target_close_on` nullable
 - `created_at`
 - `updated_at`
 
-Existing `rounds` receive a nullable `capital_mandate_id`. Migration creates one default legal entity, venture, narrative profile, and capital mandate from the existing founder and active round, then attaches the round. This preserves current application behavior while enabling later mandate selection.
+Existing `rounds` receive a nullable `capital_mandate_id`. Migration creates one default legal entity, venture, narrative profile, and capital mandate from the existing founder and active round, then attaches the round. This preserves current behavior while enabling later mandate selection.
 
 #### `venture_assets`
 
@@ -201,7 +218,7 @@ Required fields:
 - `created_at`
 - `updated_at`
 
-### 5.2 Migration v11: organizations, opportunities, and applications
+### 6.2 Migration v11: organizations, opportunities, tracks, and applications
 
 #### `organizations`
 
@@ -240,26 +257,44 @@ Required fields:
 
 Opportunity kinds:
 
-- investor
-- accelerator
-- grant
-- hackathon
-- startup_program
-- cloud_credits
-- strategic_partner
-- sponsor
-- design_partner
+- `capital_application`
+- `accelerator`
+- `grant`
+- `hackathon`
+- `startup_program`
+- `cloud_credits`
+- `strategic_partner`
+- `sponsor`
+- `design_partner`
 
 Opportunity status:
 
-- discovered
-- open
-- upcoming
-- rolling
-- closed_recurring
-- watchlist
-- expired
-- withdrawn
+- `discovered`
+- `open`
+- `upcoming`
+- `rolling`
+- `closed_recurring`
+- `watchlist`
+- `expired`
+- `withdrawn`
+
+#### `opportunity_tracks`
+
+Represents one hackathon bounty, sponsor track, accelerator track, grant theme, or program pathway.
+
+Required fields:
+
+- `id`
+- `opportunity_id`
+- `external_track_id` nullable
+- `name`
+- `required_technology` nullable
+- `prize_or_terms` nullable
+- `eligibility` nullable
+- `source_id` nullable
+- `status`
+- `created_at`
+- `updated_at`
 
 #### `opportunity_sources`
 
@@ -267,15 +302,16 @@ Links opportunities to the existing `sources` table and records source role, evi
 
 #### `applications`
 
-Joins one venture to one exact opportunity cycle.
+Represents one exact submission or formal engagement.
 
 Required fields:
 
 - `id`
-- `venture_id`
+- `lead_venture_id`
 - `legal_entity_id`
 - `capital_mandate_id` nullable
 - `opportunity_id`
+- `submission_key`
 - `owner`
 - `stage`
 - `priority`
@@ -291,24 +327,32 @@ Required fields:
 - `created_at`
 - `updated_at`
 
-Unique constraint: one application for each `(venture_id, opportunity_id)`. Separate program cycles are separate opportunities.
+Unique constraint: `(lead_venture_id, opportunity_id, submission_key)`. The default key is `primary`; a second key is allowed only when program rules permit a distinct submission.
 
 Application stages:
 
-- discovered
-- qualified
-- registered
-- drafting
-- internal_review
-- submitted
-- interview
-- demo
-- selected
-- rejected
-- completed
-- withdrawn
+- `discovered`
+- `qualified`
+- `registered`
+- `drafting`
+- `internal_review`
+- `submitted`
+- `interview`
+- `demo`
+- `selected`
+- `rejected`
+- `completed`
+- `withdrawn`
 
-A database constraint rejects applications whose venture and selected legal entity disagree.
+A database constraint rejects applications whose lead venture and selected legal entity disagree.
+
+#### `application_ventures`
+
+Links supporting RNDRNTWRK components to an application without implying separate legal entities. Roles are `lead` and `supporting`; exactly one lead must match `applications.lead_venture_id`.
+
+#### `application_tracks`
+
+Links an application to selected opportunity tracks or sponsor bounties. This allows one submission to target several compatible bounties while preserving each track's requirements and result.
 
 #### `application_events`
 
@@ -326,20 +370,23 @@ Links an application to venture assets or application-specific references such a
 
 Records a manual external submission outcome:
 
+- `receipt_type`: `portal_receipt`, `confirmation_email`, or `founder_attestation`
 - provider or portal
-- external reference
-- receipt URI or local path
+- external reference nullable
+- receipt URI or local path nullable
 - submitted timestamp
 - application snapshot hash
 - notes
 
-The receipt does not cause or imply an automated submission.
+A founder attestation is permitted only when the external portal provides no durable confirmation. The interface labels it as weaker evidence than a portal receipt or confirmation email.
+
+The receipt records an action performed outside Outreachr. It never causes an automated submission.
 
 #### `program_milestones`
 
 Tracks grant, accelerator, hackathon, credit, or partner milestones with owner, due date, status, evidence reference, and completion timestamp.
 
-### 5.3 Migration v12: reviewed import packages
+### 6.3 Migration v12: reviewed import packages
 
 #### `opportunity_imports`
 
@@ -347,7 +394,7 @@ Records package ID, version, logical digest, file digest, source count, opportun
 
 The importer is transactional and idempotent by package ID and digest. A package ID may never silently change to a different digest.
 
-## 6. Atlas import contract
+## 7. Atlas import contract
 
 The Opportunity Atlas exports a reviewed SQLite or canonical JSON package plus a manifest.
 
@@ -362,6 +409,7 @@ Required package properties:
 - exact opportunity cycle identity;
 - source URLs and observed dates;
 - confidence and review state;
+- tracks or bounties when available;
 - no private relationship or contact history.
 
 ### Import workflow
@@ -382,7 +430,7 @@ Required package properties:
 - Closed or expired opportunities remain in history.
 - Duplicate detection uses explicit external IDs where available, then canonical URL plus cycle key. Name similarity alone is insufficient.
 
-## 7. Desktop application changes
+## 8. Desktop application changes
 
 ### Navigation
 
@@ -400,14 +448,15 @@ Shows legal entity, venture category, active narratives, assets, capital mandate
 
 ### Opportunity workspace
 
-Provides filters for type, status, deadline, component, demo, score, source freshness, and decision. It is a decision queue, not another decorative dashboard.
+Provides filters for type, status, deadline, component, demo, score, source freshness, track, and decision. It is a decision queue, not another decorative dashboard.
 
 ### Application workspace
 
 Shows:
 
 - opportunity and organizer;
-- legal entity and venture;
+- legal entity, lead venture, and supporting components;
+- selected tracks and bounty requirements;
 - frozen narrative version;
 - deadline snapshot;
 - answers and review status;
@@ -419,9 +468,11 @@ Shows:
 
 ### Review behavior
 
-An application can enter `submitted` only after the founder records a manual receipt against a deterministic snapshot hash covering the selected narrative, reviewed answers, and selected assets. Editing those records after snapshot creation marks the application as changed-after-review and requires a new snapshot before another receipt can be recorded.
+Before manual submission, the founder creates a deterministic application snapshot covering the selected narrative, reviewed answers, selected tracks, and selected assets. Recording a receipt moves the application into `submitted` and binds the receipt to that snapshot hash.
 
-## 8. Commands and contracts
+Editing any covered record after snapshot creation marks the snapshot stale. A new submission or resubmission requires a new snapshot. Historical receipts remain bound to their original snapshot.
+
+## 9. Commands and contracts
 
 Add typed commands for:
 
@@ -430,7 +481,10 @@ Add typed commands for:
 - narrative create/version/activate;
 - capital mandate create/update/select;
 - opportunity get/qualify/watch/archive;
+- opportunity track review;
 - application create/update/stage/next action;
+- supporting venture attach/detach;
+- application track attach/detach;
 - answer save/review;
 - asset attach/detach;
 - milestone create/update;
@@ -440,7 +494,7 @@ Add typed commands for:
 
 Every new command crosses a Zod validation boundary and repeats invariant checks in SQLite or the repository layer.
 
-## 9. Agent and MCP design
+## 10. Agent and MCP design
 
 ### New disclosure classes
 
@@ -483,10 +537,10 @@ The MCP server must reject and never advertise tools that:
 
 RNDRNTWRK CTRL may launch and budget the agent process, but Outreachr remains the authority for its local records, disclosure grants, proposals, approval state, communication ledger, and audit chain.
 
-## 10. Security and privacy
+## 11. Security and privacy
 
 1. Every new private table is excluded from contribution export by default because the exporter builds a new allowlisted database.
-2. Contribution tests must prove that ventures, legal entities, capital mandates, applications, answers, assets, receipts, milestones, events, and imports cannot leak.
+2. Contribution tests must prove that ventures, legal entities, capital mandates, applications, answers, assets, receipts, milestones, events, tracks, and imports cannot leak.
 3. Encrypted backups include the new tables and pass integrity, foreign-key, and migration checks before replacement.
 4. Production logs never contain application answers, receipt details, private asset paths, meeting notes, or disclosed agent context.
 5. Imported packages are untrusted input and are parsed in isolation before transactional merge.
@@ -494,20 +548,21 @@ RNDRNTWRK CTRL may launch and budget the agent process, but Outreachr remains th
 7. Portal submission remains manual.
 8. No new provider credential or cloud service is required for the opportunity domain.
 
-## 11. Error handling
+## 12. Error handling
 
 - Unsupported or newer schema: refuse import and preserve the current vault.
 - Digest mismatch: refuse import and write no rows.
 - Duplicate package ID with a new digest: refuse import.
 - Invalid venture/legal-entity relationship: reject before persistence.
-- Missing or stale narrative snapshot: block receipt recording.
+- Missing or stale application snapshot: block receipt recording.
 - Deadline conflict: create a review item; do not silently overwrite.
+- Disallowed duplicate submission key: reject before persistence.
 - Agent authorization overreach: fail before tool dispatch and record an audit failure.
 - Audit write failure: fail the operation closed.
 - Backup restore failure: leave the current vault unchanged.
-- Unknown application or opportunity status: reject at both Zod and SQLite boundaries.
+- Unknown application, opportunity, track, or receipt status: reject at both Zod and SQLite boundaries.
 
-## 12. Testing strategy
+## 13. Testing strategy
 
 ### Migration and repository tests
 
@@ -515,9 +570,10 @@ RNDRNTWRK CTRL may launch and budget the agent process, but Outreachr remains th
 - Reopen and verify all relationships and user versions.
 - Verify default entity, venture, narrative, and mandate creation.
 - Verify legal-entity mismatch constraints.
-- Verify application and opportunity stage transitions.
+- Verify lead and supporting venture constraints.
+- Verify application, opportunity, track, and milestone transitions.
 - Verify append-only application events.
-- Verify deterministic submission snapshot hashing.
+- Verify deterministic submission snapshot hashing and stale-snapshot detection.
 - Verify Atlas import digest pinning, idempotency, diff, conflict handling, and rollback.
 
 ### Privacy and security tests
@@ -534,9 +590,11 @@ RNDRNTWRK CTRL may launch and budget the agent process, but Outreachr remains th
 - Create and switch ventures and mandates.
 - Import an Atlas package through preview and confirmation.
 - Qualify an opportunity and create an application.
+- Attach supporting products and sponsor tracks.
 - Select and freeze a narrative.
 - Draft and review answers.
 - Attach assets and milestones.
+- Create a submission snapshot.
 - Record a manual receipt and verify snapshot state.
 - Run an agent with selected application context and review a pending proposal.
 - Complete keyboard, screen-reader, reduced-motion, zoom, and WCAG 2.2 AA checks.
@@ -545,7 +603,7 @@ RNDRNTWRK CTRL may launch and budget the agent process, but Outreachr remains th
 
 Retain the existing six-target native matrix, complete verification gate, dependency audit, CodeQL, Electron fuse checks, packaged smoke tests, SBOM, checksums, provenance, and attestations.
 
-## 13. Implementation phases and exit criteria
+## 14. Implementation phases and exit criteria
 
 ### Phase 0: fork governance
 
@@ -571,14 +629,14 @@ Qualify:
 - target research and lists;
 - knowledge disclosures;
 - draft and exact approval;
-- one safe synthetic provider send or mocked equivalent;
+- one mocked connector send path or founder-approved synthetic provider test;
 - meeting flow;
 - Codex proposal and rejection;
 - audit verification;
 - encrypted backup and restore;
 - contribution export privacy.
 
-Exit: a signed qualification report records passes, failures, and required fixes before domain migration.
+Exit: a committed qualification report records passes, failures, and required fixes before domain migration.
 
 ### Phase 2: venture domain
 
@@ -588,7 +646,7 @@ Exit: existing v9 vaults migrate safely, current investor workflows remain usabl
 
 ### Phase 3: opportunity and application domain
 
-Implement migration v11, new workspaces, commands, review behavior, snapshots, receipts, milestones, and tests.
+Implement migration v11, new workspaces, commands, supporting components, sponsor tracks, review behavior, snapshots, receipts, milestones, and tests.
 
 Exit: one opportunity can move from qualification through a manually receipted submission without being represented as an investor.
 
@@ -602,7 +660,7 @@ Exit: a reviewed package imports deterministically, a repeated import is idempot
 
 Implement disclosure classes, MCP tools, proposal review, trace fields, CTRL launch metadata, and tests.
 
-Exit: Alice can read selected venture/opportunity/application records and create pending proposals, but cannot send, submit, sign, upload, or access unselected data.
+Exit: Alice can read selected venture, opportunity, and application records and create pending proposals, but cannot send, submit, sign, upload, or access unselected data.
 
 ### Phase 6: integrated release
 
@@ -611,10 +669,11 @@ Run the full end-to-end scenario:
 ```text
 Atlas opportunity
 → reviewed import
-→ venture and legal-entity selection
+→ legal entity and lead venture selection
+→ supporting component and track selection
 → application creation
 → agent-drafted answer
-→ founder review
+→ founder review and snapshot
 → manual external submission
 → receipt capture
 → interview task
@@ -623,7 +682,7 @@ Atlas opportunity
 
 Exit: all native builds, security and privacy gates, accessibility checks, backup/restore, contribution privacy, and package provenance pass on the fork.
 
-## 14. Branch and pull-request strategy
+## 15. Branch and pull-request strategy
 
 ```text
 main
@@ -641,21 +700,22 @@ release/rndrntwrk-opportunity-operations
 
 Each branch starts from an immutable base SHA, has one bounded responsibility, and closes through a pull request. Generic improvements should remain separable for potential upstream contribution.
 
-## 15. Definition of done
+## 16. Definition of done
 
 The work is complete only when:
 
 1. The fork has its own passing CI, CodeQL, and release history.
 2. Existing v9 vaults migrate without data loss.
 3. One legal entity can own several product narratives without implying several cap tables.
-4. Opportunities and applications are first-class records.
-5. Atlas import is reviewed, digest-pinned, idempotent, and source-aware.
-6. Application answers, assets, milestones, events, and receipts are private and auditable.
-7. Manual receipt capture binds to an exact reviewed application snapshot.
-8. Alice and CTRL remain read/proposal-only through MCP.
-9. Email sending remains founder-approved and initial-only.
-10. Application submission remains manual.
-11. Contribution export contains no new private records.
-12. Encrypted backup and restore pass after every migration.
-13. The full native verification and release pipeline succeeds on the fork.
-14. The integrated end-to-end scenario passes in Electron E2E tests.
+4. Opportunities, tracks, and applications are first-class records.
+5. Multiple RNDRNTWRK components can support one submission without legal-entity ambiguity.
+6. Atlas import is reviewed, digest-pinned, idempotent, and source-aware.
+7. Application answers, assets, milestones, events, tracks, and receipts are private and auditable.
+8. Manual receipt capture binds to an exact reviewed application snapshot.
+9. Alice and CTRL remain read/proposal-only through MCP.
+10. Email sending remains founder-approved and initial-only.
+11. Application submission remains manual.
+12. Contribution export contains no new private records.
+13. Encrypted backup and restore pass after every migration.
+14. The full native verification and release pipeline succeeds on the fork.
+15. The integrated end-to-end scenario passes in Electron E2E tests.
