@@ -11,12 +11,13 @@ import {
   type IpcMainInvokeEvent,
 } from 'electron';
 import { IPC_CHANNELS, type AgentEvent } from '../shared/contracts';
-import type { FounderCommandMap } from '../shared/venture-contracts';
+import type { StudioCommandMap } from '../shared/hackathon-contracts';
 import { DesktopAgentService } from './agent-service';
 import { CommandService as BaseCommandService } from './command-service';
 import { ConnectorService } from './connector-service';
 import { createConnectorTestSeam } from './connector-test-seam';
 import { FounderCommandService } from './founder-command-service';
+import { HackathonService } from './hackathon-service';
 import { DesktopMcpBridge } from './mcp-service';
 import {
   isAllowedExternalUrl,
@@ -24,7 +25,9 @@ import {
   resolveDesktopLaunchHooks,
   type DesktopLaunchHooks,
 } from './navigation-security';
+import { OpportunityService } from './opportunity-service';
 import { ElectronSecretStoreBackend, SecureStore } from './secure-store';
+import { StudioCommandService } from './studio-command-service';
 import { VaultService } from './vault-service';
 import { VentureService } from './venture-service';
 
@@ -35,9 +38,6 @@ let mcpBridge: DesktopMcpBridge | null = null;
 let ipcRegistered = false;
 let shutdownStarted = false;
 
-// electron-vite emits the main process as an ES module. Derive the bundle
-// directory from import.meta.url instead of relying on CommonJS' __dirname,
-// which is not defined when the built application starts.
 const mainModuleDirectory = dirname(fileURLToPath(import.meta.url));
 
 function startupDiagnostic(stage: string): void {
@@ -62,8 +62,9 @@ function resourcesRoot(): string {
 }
 
 function emitAgentEvent(event: AgentEvent): void {
-  if (mainWindow && !mainWindow.isDestroyed())
+  if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send(IPC_CHANNELS.agentEvent, event);
+  }
 }
 
 function assertTrustedIpcSender(event: IpcMainInvokeEvent): void {
@@ -78,7 +79,7 @@ function assertTrustedIpcSender(event: IpcMainInvokeEvent): void {
 }
 
 async function createWindow(
-  commandService: FounderCommandService,
+  commandService: StudioCommandService,
   launchHooks: DesktopLaunchHooks,
 ): Promise<BrowserWindow> {
   const rendererEntry = join(mainModuleDirectory, '../renderer/index.html');
@@ -126,7 +127,7 @@ async function createWindow(
     });
     ipcMain.handle(
       IPC_CHANNELS.command,
-      async (event, command: keyof FounderCommandMap, payload: unknown) => {
+      async (event, command: keyof StudioCommandMap, payload: unknown) => {
         assertTrustedIpcSender(event);
         const result = await commandService.execute(command, payload);
         if (command === 'data.reset') {
@@ -170,14 +171,16 @@ async function createWindow(
     });
     ipcMain.handle(IPC_CHANNELS.revealPath, (event, path: string) => {
       assertTrustedIpcSender(event);
-      if (typeof path !== 'string' || !path.trim() || path.length > 4_096)
+      if (typeof path !== 'string' || !path.trim() || path.length > 4_096) {
         throw new Error('Invalid local path');
+      }
       shell.showItemInFolder(resolve(path));
     });
     ipcMain.handle(IPC_CHANNELS.copyText, (event, text: string) => {
       assertTrustedIpcSender(event);
-      if (typeof text !== 'string' || text.length > 1_000_000)
+      if (typeof text !== 'string' || text.length > 1_000_000) {
         throw new Error('Invalid clipboard text');
+      }
       clipboard.writeText(text);
     });
     ipcMain.handle(
@@ -226,8 +229,9 @@ async function start(): Promise<void> {
   await vault.initialize();
   startupDiagnostic('vault initialized');
   const integrity = vault.integrityCheck();
-  if (!integrity.ok)
+  if (!integrity.ok) {
     throw new Error(`Local SQLite integrity check failed: ${integrity.messages.join('; ')}`);
+  }
   const auditIntegrity = vault.auditIntegrity();
   if (!auditIntegrity.ok) {
     throw new Error(
@@ -272,15 +276,23 @@ async function start(): Promise<void> {
     emitAgentEvent,
   });
   const ventures = new VentureService({ vault, resourceDirectory });
-  const commands = new FounderCommandService({ base: baseCommands, ventures });
+  const founderCommands = new FounderCommandService({ base: baseCommands, ventures });
+  const opportunities = new OpportunityService({ vault });
+  const hackathons = new HackathonService({ vault });
+  const commands = new StudioCommandService({
+    founder: founderCommands,
+    opportunities,
+    hackathons,
+  });
   mainWindow = await createWindow(commands, launchHooks);
   startupDiagnostic('first window created');
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0)
+    if (BrowserWindow.getAllWindows().length === 0) {
       void createWindow(commands, launchHooks).then((window) => {
         mainWindow = window;
       });
+    }
   });
 }
 
@@ -297,10 +309,6 @@ else {
     const message = error instanceof Error ? error.message : 'Unknown startup error';
     const detail = error instanceof Error ? (error.stack ?? error.message) : message;
     startupDiagnostic(`fatal startup error: ${detail}`);
-    // Native error boxes are modal on macOS and invisible to Playwright. Exit
-    // directly for the explicitly gated unpackaged E2E seam so a startup
-    // regression fails immediately with the captured diagnostic instead of
-    // presenting as a one-minute "no first window" timeout.
     if (!app.isPackaged && process.env.NODE_ENV === 'test' && process.env.OUTREACHR_E2E_DATA_DIR) {
       app.exit(1);
       return;
