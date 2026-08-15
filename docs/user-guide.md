@@ -10,6 +10,8 @@ Outreachr is a single-founder, local-first fundraising workspace for pre-seed, s
 4. Outreachr imports the pinned investor research seed into a new private vault.
 5. Review **Up next** for the highest-priority local tasks and safety reviews.
 
+Before entering live contacts, relationship history, application answers, or diligence material, complete the [private-vault qualification](runbooks/private-vault-qualification.md). A founder operating the focused settlement raise should also use the [SW4P capital-mandate runbook](runbooks/sw4p-capital-mandate.md) so the active round retains one company story and an explicit claims boundary.
+
 The bundled seed is explicitly marked research-grade. A source count is not proof of correctness. Exact claim sources retain their URLs, observation dates, confidence, and rights metadata; assertions without field-level evidence remain visibly unattributed instead of borrowing an unrelated entity source.
 
 ## Investor universe

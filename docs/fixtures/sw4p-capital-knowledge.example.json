@@ -1,0 +1,30 @@
+{
+  "company": "SW4P",
+  "stage": "pre_seed",
+  "knowledge": [
+    {
+      "title": "SW4P category",
+      "category": "company",
+      "sharePolicy": "safe_for_outreach",
+      "content": "SW4P is programmable internet-native settlement for applications."
+    },
+    {
+      "title": "SW4P outcome",
+      "category": "company",
+      "sharePolicy": "safe_for_outreach",
+      "content": "One settlement instruction becomes a gas-aware, fee-correct, provable and reconcilable result across supported EVM and Solana routes."
+    },
+    {
+      "title": "SW4P evidence boundary",
+      "category": "disclosure",
+      "sharePolicy": "internal",
+      "content": "Use reproducible route proofs, tests and dated implementation evidence. Do not present planned rails as currently live."
+    },
+    {
+      "title": "SW4P prohibited statements",
+      "category": "disclosure",
+      "sharePolicy": "internal",
+      "content": "Do not guarantee route coverage, transaction success, liquidity, token performance or production availability that the current evidence does not support."
+    }
+  ]
+}
