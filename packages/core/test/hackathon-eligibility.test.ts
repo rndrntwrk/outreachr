@@ -69,6 +69,24 @@ describe('hackathon eligibility evaluation', () => {
     expect(result.details[0]?.reason).toContain('requires a current student');
   });
 
+  it('does not require unavailable profile facts when the reviewed rule says they are optional', () => {
+    const result = evaluateHackathonEligibility(
+      { ...profile, isStudent: null, willOpenSource: null },
+      [
+        rule('rule:student-optional', 'student_status', { required: false }),
+        rule('rule:open-source-optional', 'open_source', { required: false }),
+      ],
+    );
+    expect(result.status).toBe('eligible');
+  });
+
+  it('fails closed when a required-technology rule has no usable technology list', () => {
+    const result = evaluateHackathonEligibility(profile, [
+      rule('rule:technology-empty', 'required_technology', { allOf: [] }),
+    ]);
+    expect(result.status).toBe('uncertain');
+  });
+
   it('returns uncertain when a blocking company-age rule cannot be evaluated', () => {
     const result = evaluateHackathonEligibility(
       { ...profile, companyFoundedOn: null },
@@ -98,7 +116,12 @@ describe('hackathon eligibility evaluation', () => {
 
   it('fails closed for pending, rejected, unknown or stale blocking evidence', () => {
     for (const uncertainRule of [
-      rule('rule:pending', 'geography', { allowed: ['US'] }, { reviewState: 'pending', reviewedAt: null }),
+      rule(
+        'rule:pending',
+        'geography',
+        { allowed: ['US'] },
+        { reviewState: 'pending', reviewedAt: null },
+      ),
       rule('rule:rejected', 'geography', { allowed: ['US'] }, { reviewState: 'rejected' }),
       rule('rule:unknown', 'geography', { allowed: ['US'] }, { confidence: 'unknown' }),
       rule('rule:stale', 'geography', { allowed: ['US'] }, { confidence: 'stale' }),
