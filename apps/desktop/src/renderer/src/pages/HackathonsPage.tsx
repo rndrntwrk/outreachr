@@ -1,20 +1,30 @@
-import { useMemo, useState } from 'react';
-import { Plus, Trophy } from 'lucide-react';
+import { useState } from 'react';
+import { Plus } from 'lucide-react';
 
-import type { HackathonEntryState } from '../../../shared/hackathon-contracts';
+import type { HackathonEntrySummary } from '../../../shared/hackathon-contracts';
 import { HackathonDeadlineStrip } from '../components/hackathons/HackathonDeadlineStrip';
 import { HackathonQueue } from '../components/hackathons/HackathonQueue';
-import { Button, Dialog, PageHeader, Section, TextField, formatMoney } from '../components/ui';
+import { Button, Dialog, PageHeader, Section, TextField } from '../components/ui';
 import { useNavigate } from '../lib/router';
 import { useWorkspace } from '../state/WorkspaceContext';
 
-const ACTIVE_STATES: HackathonEntryState[] = ['selected', 'building', 'submission_ready'];
+type HackathonEntryState = HackathonEntrySummary['state'];
+
+const ACTIVE_STATES: HackathonEntryState[] = [
+  'approved',
+  'scoped',
+  'building',
+  'verification',
+  'submission_ready',
+];
 const POST_RESULT_STATES: HackathonEntryState[] = [
   'submitted',
+  'judging',
   'finalist',
-  'result_recorded',
-  'follow_up',
-  'completed',
+  'won',
+  'not_selected',
+  'converted',
+  'archived',
 ];
 
 const ratingDefaults = {
@@ -55,7 +65,6 @@ export function HackathonsPage(): React.JSX.Element {
 
   if (!data) return <div className="page" />;
 
-  const cycleById = new Map(data.hackathonCycles.map((item) => [item.id, item]));
   const opportunityById = new Map(data.opportunities.map((item) => [item.id, item]));
   const selectedVenture = data.ventures.find((item) => item.id === ventureId) ?? null;
   const hackathonNarratives = data.narrativeProfiles.filter(
@@ -69,29 +78,22 @@ export function HackathonsPage(): React.JSX.Element {
       .filter((version) => version.approvalState === 'approved')
       .map((version) => ({ ...version, demoName: demo.name })),
   );
-  const resolvedNarrativeId =
-    hackathonNarratives.some((item) => item.id === narrativeId)
-      ? narrativeId
-      : (hackathonNarratives[0]?.id ?? '');
+  const resolvedNarrativeId = hackathonNarratives.some((item) => item.id === narrativeId)
+    ? narrativeId
+    : (hackathonNarratives[0]?.id ?? '');
   const preferredDemoVersionId = selectedVenture?.currentDemoVersionId ?? '';
-  const resolvedDemoVersionId = approvedDemoVersions.some(
-    (item) => item.id === demoVersionId,
-  )
+  const resolvedDemoVersionId = approvedDemoVersions.some((item) => item.id === demoVersionId)
     ? demoVersionId
     : approvedDemoVersions.some((item) => item.id === preferredDemoVersionId)
       ? preferredDemoVersionId
       : (approvedDemoVersions[0]?.id ?? '');
 
-  const filteredEntries = useMemo(
-    () =>
-      data.hackathonEntries.filter((entry) => {
-        if (stateFilter !== 'all' && entry.state !== stateFilter) return false;
-        if (ventureFilter !== 'all' && entry.leadVentureId !== ventureFilter) return false;
-        if (cycleFilter !== 'all' && entry.cycleId !== cycleFilter) return false;
-        return true;
-      }),
-    [cycleFilter, data.hackathonEntries, stateFilter, ventureFilter],
-  );
+  const filteredEntries = data.hackathonEntries.filter((entry) => {
+    if (stateFilter !== 'all' && entry.state !== stateFilter) return false;
+    if (ventureFilter !== 'all' && entry.leadVentureId !== ventureFilter) return false;
+    if (cycleFilter !== 'all' && entry.cycleId !== cycleFilter) return false;
+    return true;
+  });
 
   const deadlines = data.hackathonCycles
     .filter((cycle) => cycle.submissionDeadlineAt !== null)
@@ -107,6 +109,10 @@ export function HackathonsPage(): React.JSX.Element {
   const applyNow = filteredEntries.filter((entry) => entry.state === 'candidate');
   const activeBuilds = filteredEntries.filter((entry) => ACTIVE_STATES.includes(entry.state));
   const postResult = filteredEntries.filter((entry) => POST_RESULT_STATES.includes(entry.state));
+  const portfolioHours = data.hackathonEntries.reduce(
+    (total, entry) => total + entry.estimatedHours,
+    0,
+  );
 
   const resetCandidate = (): void => {
     const firstCycle = data.hackathonCycles[0]?.id ?? '';
@@ -183,24 +189,24 @@ export function HackathonsPage(): React.JSX.Element {
 
       <div className="hackathon-metrics" aria-label="Hackathon portfolio metrics">
         <div>
-          <span>Reviewed cycles</span>
-          <strong>{data.hackathonMetrics.totalCycles}</strong>
+          <span>Open cycles</span>
+          <strong>{data.hackathonPortfolio.openUpcomingRollingCycles}</strong>
         </div>
         <div>
-          <span>Upcoming deadlines</span>
-          <strong>{data.hackathonMetrics.upcomingDeadlines}</strong>
+          <span>Candidates</span>
+          <strong>{data.hackathonPortfolio.candidateEntries}</strong>
         </div>
         <div>
           <span>Active builds</span>
-          <strong>{data.hackathonMetrics.activeBuilds}</strong>
+          <strong>{data.hackathonPortfolio.approvedActiveBuilds}</strong>
         </div>
         <div>
-          <span>Expected effort</span>
-          <strong>{data.hackathonMetrics.expectedHours}h</strong>
+          <span>Blocked entries</span>
+          <strong>{data.hackathonPortfolio.blockedEntries}</strong>
         </div>
         <div>
-          <span>Prize surface</span>
-          <strong>{formatMoney(data.hackathonMetrics.expectedPrizeValue, true)}</strong>
+          <span>Portfolio effort</span>
+          <strong>{portfolioHours}h</strong>
         </div>
       </div>
 
@@ -220,13 +226,18 @@ export function HackathonsPage(): React.JSX.Element {
           >
             <option value="all">All states</option>
             <option value="candidate">Candidate</option>
-            <option value="selected">Selected</option>
+            <option value="approved">Approved</option>
+            <option value="scoped">Scoped</option>
             <option value="building">Building</option>
+            <option value="verification">Verification</option>
             <option value="submission_ready">Submission ready</option>
             <option value="submitted">Submitted</option>
+            <option value="judging">Judging</option>
             <option value="finalist">Finalist</option>
-            <option value="follow_up">Follow up</option>
-            <option value="completed">Completed</option>
+            <option value="won">Won</option>
+            <option value="not_selected">Not selected</option>
+            <option value="converted">Converted</option>
+            <option value="archived">Archived</option>
           </select>
         </label>
         <label>
@@ -289,7 +300,7 @@ export function HackathonsPage(): React.JSX.Element {
 
       <Section
         title="Active builds"
-        description="Selected entries moving through isolated build, evidence and submission-readiness gates."
+        description="Approved entries moving through isolated build, evidence and submission-readiness gates."
       >
         <HackathonQueue
           entries={activeBuilds}
