@@ -121,7 +121,7 @@ const capitalMandateSaveSchema = z
     }
   });
 
-const schemas: { [K in VentureCommandName]: z.ZodType<VentureCommandMap[K]> } = {
+const schemas = {
   'legalEntity.save': legalEntitySaveSchema,
   'venture.save': ventureSaveSchema,
   'narrative.createVersion': narrativeCreateSchema,
@@ -130,7 +130,7 @@ const schemas: { [K in VentureCommandName]: z.ZodType<VentureCommandMap[K]> } = 
   'canonicalDemo.createVersion': canonicalDemoVersionSchema,
   'canonicalDemo.approve': z.object({ id, expectedContentSha256: sha256 }),
   'capitalMandate.save': capitalMandateSaveSchema,
-};
+} satisfies Record<VentureCommandName, z.ZodTypeAny>;
 
 const commandNames = new Set<string>(Object.keys(schemas));
 
