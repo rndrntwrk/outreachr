@@ -1,3 +1,5 @@
+import type { AppBootstrap, CommandMap, CommandResultMap } from './contracts';
+
 export type LegalEntityType =
   | 'corporation'
   | 'llc'
@@ -125,6 +127,8 @@ export interface VentureBootstrap {
   activeCapitalMandateId: string | null;
 }
 
+export type FounderAppBootstrap = AppBootstrap & VentureBootstrap;
+
 export interface LegalEntitySaveInput {
   id?: string;
   legalName: string;
@@ -202,3 +206,37 @@ export interface CapitalMandateSaveInput {
   status: CapitalMandateStatus;
   approvedUseOfFunds: string;
 }
+
+export interface VentureCommandMap {
+  'legalEntity.save': LegalEntitySaveInput;
+  'venture.save': VentureSaveInput;
+  'narrative.createVersion': NarrativeVersionCreateInput;
+  'narrative.approve': { id: string; expectedContentSha256: string };
+  'canonicalDemo.importDefaults': { packageDigest: string };
+  'canonicalDemo.createVersion': CanonicalDemoVersionCreateInput;
+  'canonicalDemo.approve': { id: string; expectedContentSha256: string };
+  'capitalMandate.save': CapitalMandateSaveInput;
+}
+
+export interface VentureCommandResultMap {
+  'legalEntity.save': LegalEntitySummary;
+  'venture.save': VentureSummary;
+  'narrative.createVersion': NarrativeProfileSummary;
+  'narrative.approve': NarrativeProfileSummary;
+  'canonicalDemo.importDefaults': CanonicalDemoSummary[];
+  'canonicalDemo.createVersion': CanonicalDemoVersionSummary;
+  'canonicalDemo.approve': CanonicalDemoVersionSummary;
+  'capitalMandate.save': CapitalMandateSummary;
+}
+
+export type FounderCommandMap = CommandMap & VentureCommandMap;
+export type FounderCommandResultMap = CommandResultMap & VentureCommandResultMap;
+export type FounderCommandName = keyof FounderCommandMap;
+export type VentureCommandName = keyof VentureCommandMap;
+
+export type FounderCommandResult<K extends FounderCommandName> =
+  K extends keyof VentureCommandResultMap
+    ? VentureCommandResultMap[K]
+    : K extends keyof CommandResultMap
+      ? CommandResultMap[K]
+      : never;
