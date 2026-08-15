@@ -86,12 +86,39 @@ describe('HackathonService record identity', () => {
     expect(approvedBuild.id).toBe(draftBuild.id);
     expect(approvedBuild.status).toBe('approved');
 
+    await expect(
+      hackathons.saveDistribution({
+        entryId,
+        summary: 'Pre-event, submission-day and post-result distribution.',
+        status: 'active',
+        contentSha256: SHA256,
+      }),
+    ).rejects.toThrow(
+      'A new distribution plan must start as a draft so its required items can be added.',
+    );
+
     const draftDistribution = await hackathons.saveDistribution({
       entryId,
       summary: 'Pre-event, submission-day and post-result distribution.',
       status: 'draft',
       contentSha256: SHA256,
     });
+    for (const [phase, title] of [
+      ['pre_event', 'Build-in-public announcement'],
+      ['submission_day', 'Submission launch post'],
+      ['post_result', 'Result and conversion follow-up'],
+    ] as const) {
+      await hackathons.saveDistributionItem({
+        planId: draftDistribution.id,
+        kind: phase === 'submission_day' ? 'launch_post' : 'build_in_public_update',
+        phase,
+        status: 'planned',
+        title,
+        scheduledAt: null,
+        completedAt: null,
+        reference: null,
+      });
+    }
     const activeDistribution = await hackathons.saveDistribution({
       entryId,
       summary: 'Pre-event, submission-day and post-result distribution.',
