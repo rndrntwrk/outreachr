@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import {
   Archive,
-  BookOpenText,
   Bot,
   CalendarDays,
   CheckSquare,
@@ -12,7 +11,6 @@ import {
   FolderKanban,
   Handshake,
   Inbox,
-  Landmark,
   ListFilter,
   Mail,
   Menu,
@@ -21,6 +19,7 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  Trophy,
   Users,
 } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from '../lib/router';
@@ -30,8 +29,9 @@ import { IconButton, StateDot, ToastRegion } from './ui';
 
 const primaryNavigation = [
   { to: '/', label: 'Up next', icon: Inbox },
+  { to: '/hackathons', label: 'Hackathon Studio', icon: Trophy },
   { to: '/round', label: 'Round overview', icon: CircleDollarSign },
-  { to: '/ventures', label: 'Ventures', icon: Landmark },
+  { to: '/ventures', label: 'Ventures', icon: FolderKanban },
   { to: '/investors', label: 'Investors', icon: Users },
   { to: '/pipeline', label: 'Pipeline', icon: FolderKanban },
   { to: '/introductions', label: 'Introductions', icon: Handshake },
@@ -40,8 +40,8 @@ const primaryNavigation = [
 ];
 
 const knowledgeNavigation = [
+  { to: '/narratives', label: 'Narratives & demos', icon: FileText },
   { to: '/knowledge', label: 'Knowledge', icon: FileText },
-  { to: '/narratives', label: 'Narratives & demos', icon: BookOpenText },
   { to: '/agent', label: 'Agent', icon: Bot },
   { to: '/review', label: 'Sources & review', icon: ShieldCheck },
   { to: '/lists', label: 'Lists', icon: ListFilter },
@@ -49,11 +49,13 @@ const knowledgeNavigation = [
   { to: '/documents', label: 'Documents', icon: Archive },
 ];
 
+type NavigationItemValue = (typeof primaryNavigation)[number] | (typeof knowledgeNavigation)[number];
+
 function NavigationItem({
   to,
   label,
   icon: Icon,
-}: (typeof primaryNavigation)[number]): React.JSX.Element {
+}: NavigationItemValue): React.JSX.Element {
   return (
     <NavLink
       to={to}

@@ -4,6 +4,7 @@ import { ErrorScreen, LoadingScreen } from './components/ui';
 import { useWorkspace } from './state/WorkspaceContext';
 import { AgentPage } from './pages/AgentPage';
 import { DocumentsPage } from './pages/DocumentsPage';
+import { HackathonStudioPage } from './pages/HackathonStudioPage';
 import { IntroductionsPage } from './pages/IntroductionsPage';
 import { InvestorDetailPage } from './pages/InvestorDetailPage';
 import { InvestorsPage } from './pages/InvestorsPage';
@@ -39,8 +40,10 @@ export function App(): React.JSX.Element {
     <AppShell>
       <Routes>
         <Route path="/" element={<UpNextPage />} />
+        <Route path="/hackathons" element={<HackathonStudioPage />} />
         <Route path="/round" element={<RoundOverviewPage />} />
         <Route path="/ventures" element={<VenturesPage />} />
+        <Route path="/narratives" element={<NarrativesPage />} />
         <Route path="/investors" element={<InvestorsPage />} />
         <Route path="/investors/:investorId" element={<InvestorDetailPage />} />
         <Route path="/pipeline" element={<PipelinePage />} />
@@ -48,7 +51,6 @@ export function App(): React.JSX.Element {
         <Route path="/outreach" element={<OutreachPage />} />
         <Route path="/meetings" element={<MeetingsPage />} />
         <Route path="/knowledge" element={<KnowledgePage />} />
-        <Route path="/narratives" element={<NarrativesPage />} />
         <Route path="/agent" element={<AgentPage />} />
         <Route path="/review" element={<ReviewPage />} />
         <Route path="/lists" element={<ListsPage />} />
