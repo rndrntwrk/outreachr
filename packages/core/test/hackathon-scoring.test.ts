@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -38,6 +40,13 @@ function decisionInput(overrides: Partial<HackathonGoNoGoInput> = {}): Hackathon
 
 describe('hackathon portfolio scoring', () => {
   it('uses the exact founder policy and returns a deterministic one-decimal score', () => {
+    const resource = JSON.parse(
+      readFileSync(
+        new URL('../../../resources/rndrntwrk/hackathon-score-policy.json', import.meta.url),
+        'utf8',
+      ),
+    ) as unknown;
+    expect(resource).toEqual(HACKATHON_SCORE_POLICY);
     expect(Object.values(HACKATHON_SCORE_POLICY).reduce((sum, weight) => sum + weight, 0)).toBe(
       100,
     );
