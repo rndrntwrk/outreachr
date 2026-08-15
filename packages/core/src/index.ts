@@ -2,7 +2,7 @@ export * from './backup.js';
 export * from './canonical-demo-seed.js';
 export * from './contribution.js';
 export * from './database.js';
-export * from './hackathon-validation.js';
+export * from './hackathon-validation-v11.js';
 export * from './migrations.js';
 export * from './opportunity-validation.js';
 export * from './repository.js';
