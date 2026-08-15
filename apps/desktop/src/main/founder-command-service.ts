@@ -40,8 +40,8 @@ export class FounderCommandService {
   }
 
   async bootstrap(): Promise<FounderAppBootstrap> {
-    const base = await this.#base.bootstrap();
     const authority = await this.#ventures.bootstrap();
+    const base = await this.#base.bootstrap();
     return { ...base, ...authority };
   }
 
@@ -59,6 +59,7 @@ export class FounderCommandService {
       return result as unknown as FounderCommandResult<K>;
     }
     const authority = await this.#ventures.bootstrap();
-    return { ...(result as AppBootstrap), ...authority } as unknown as FounderCommandResult<K>;
+    const refreshedBase = await this.#base.bootstrap();
+    return { ...refreshedBase, ...authority } as unknown as FounderCommandResult<K>;
   }
 }
