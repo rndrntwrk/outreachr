@@ -9,11 +9,11 @@ import {
 } from 'react';
 import type { InvestorDetail } from '../../../shared/contracts';
 import type {
-  FounderAppBootstrap,
-  FounderCommandMap,
-  FounderCommandName,
-  FounderCommandResult,
-} from '../../../shared/venture-contracts';
+  StudioAppBootstrap,
+  StudioCommandMap,
+  StudioCommandName,
+  StudioCommandResult,
+} from '../../../shared/hackathon-contracts';
 
 interface ToastMessage {
   id: number;
@@ -23,16 +23,16 @@ interface ToastMessage {
 }
 
 interface WorkspaceValue {
-  data: FounderAppBootstrap | null;
+  data: StudioAppBootstrap | null;
   loading: boolean;
   error: string | null;
   refreshing: boolean;
   toasts: ToastMessage[];
   refresh: () => Promise<void>;
-  command: <K extends FounderCommandName>(
+  command: <K extends StudioCommandName>(
     name: K,
-    payload: FounderCommandMap[K],
-  ) => Promise<FounderCommandResult<K>>;
+    payload: StudioCommandMap[K],
+  ) => Promise<StudioCommandResult<K>>;
   getInvestor: (id: string) => Promise<InvestorDetail>;
   notify: (toast: Omit<ToastMessage, 'id'>) => void;
   dismissToast: (id: number) => void;
@@ -51,19 +51,19 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred.';
 }
 
-function executeFounderCommand<K extends FounderCommandName>(
+function executeStudioCommand<K extends StudioCommandName>(
   name: K,
-  payload: FounderCommandMap[K],
-): Promise<FounderCommandResult<K>> {
-  const command = window.outreachr.command as unknown as <N extends FounderCommandName>(
+  payload: StudioCommandMap[K],
+): Promise<StudioCommandResult<K>> {
+  const command = window.outreachr.command as unknown as <N extends StudioCommandName>(
     commandName: N,
-    commandPayload: FounderCommandMap[N],
-  ) => Promise<FounderCommandResult<N>>;
+    commandPayload: StudioCommandMap[N],
+  ) => Promise<StudioCommandResult<N>>;
   return command(name, payload);
 }
 
 export function WorkspaceProvider({ children }: PropsWithChildren): React.JSX.Element {
-  const [data, setData] = useState<FounderAppBootstrap | null>(null);
+  const [data, setData] = useState<StudioAppBootstrap | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -101,7 +101,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren): React.JSX.El
     else setLoading(true);
 
     try {
-      const bootstrap = (await window.outreachr.bootstrap()) as FounderAppBootstrap;
+      const bootstrap = (await window.outreachr.bootstrap()) as StudioAppBootstrap;
       setData(bootstrap);
       setError(null);
     } catch (cause) {
@@ -119,16 +119,18 @@ export function WorkspaceProvider({ children }: PropsWithChildren): React.JSX.El
   const refresh = useCallback(() => load(true), [load]);
 
   const command = useCallback(
-    async <K extends FounderCommandName>(name: K, payload: FounderCommandMap[K]) => {
+    async <K extends StudioCommandName>(name: K, payload: StudioCommandMap[K]) => {
       try {
-        const result = await executeFounderCommand(name, payload);
+        const result = await executeStudioCommand(name, payload);
         if (
           name === 'onboarding.complete' ||
           name === 'investor.target' ||
           name === 'pipeline.move' ||
+          name === 'connector.syncCalendar' ||
+          name === 'connector.syncMail' ||
           name === 'backup.restore'
         ) {
-          setData(result as FounderAppBootstrap);
+          setData(result as StudioAppBootstrap);
         } else if (
           name.startsWith('task.') ||
           name.startsWith('meeting.') ||
@@ -149,7 +151,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren): React.JSX.El
           name.startsWith('venture.') ||
           name.startsWith('narrative.') ||
           name.startsWith('canonicalDemo.') ||
-          name.startsWith('capitalMandate.')
+          name.startsWith('capitalMandate.') ||
+          name.startsWith('organization.') ||
+          name.startsWith('opportunity.') ||
+          name.startsWith('hackathon.')
         ) {
           await load(true);
         }
