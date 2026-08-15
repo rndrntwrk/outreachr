@@ -1,14 +1,14 @@
 export const HACKATHON_SCORE_POLICY = {
   strategicFit: 20,
   reuse: 15,
-  distributionUpside: 15,
-  technicalLeverage: 10,
+  distributionUpside: 20,
+  technicalLeverage: 15,
   capitalUpside: 10,
-  credibility: 10,
-  acceptanceProbability: 8,
+  credibility: 5,
+  acceptanceProbability: 5,
   urgency: 5,
-  effortEfficiency: 4,
-  lockInSafety: 3,
+  effortEfficiency: 3,
+  lockInSafety: 2,
 } as const;
 
 export interface HackathonScoreInput {

@@ -39,7 +39,7 @@ function decisionInput(overrides: Partial<HackathonGoNoGoInput> = {}): Hackathon
 }
 
 describe('hackathon portfolio scoring', () => {
-  it('uses the exact founder policy and returns a deterministic one-decimal score', () => {
+  it('uses the exact founder policy and treats distribution as a primary outcome', () => {
     const resource = JSON.parse(
       readFileSync(
         new URL('../../../resources/rndrntwrk/hackathon-score-policy.json', import.meta.url),
@@ -50,13 +50,19 @@ describe('hackathon portfolio scoring', () => {
     expect(Object.values(HACKATHON_SCORE_POLICY).reduce((sum, weight) => sum + weight, 0)).toBe(
       100,
     );
-    expect(calculateHackathonScore(decisionInput())).toBe(83.7);
+    expect(HACKATHON_SCORE_POLICY.distributionUpside).toBe(
+      HACKATHON_SCORE_POLICY.strategicFit,
+    );
+    expect(HACKATHON_SCORE_POLICY.distributionUpside).toBeGreaterThan(
+      HACKATHON_SCORE_POLICY.capitalUpside,
+    );
+    expect(calculateHackathonScore(decisionInput())).toBe(85);
   });
 
   it('recommends go only when score, reuse, effort, authority, eligibility and time all pass', () => {
     expect(evaluateHackathonGoNoGo(decisionInput())).toMatchObject({
       recommendation: 'go',
-      weightedScore: 83.7,
+      weightedScore: 85,
       blockingReasons: [],
       conditions: [],
     });
@@ -76,7 +82,7 @@ describe('hackathon portfolio scoring', () => {
         lockInSafety: 7,
       }),
     );
-    expect(result.weightedScore).toBe(69.3);
+    expect(result.weightedScore).toBe(70.3);
     expect(result.recommendation).toBe('no_go');
     expect(result.blockingReasons).toContain('Reuse is below the 40% no-go floor.');
   });
@@ -96,7 +102,7 @@ describe('hackathon portfolio scoring', () => {
         lockInSafety: 2,
       }),
     );
-    expect(result.weightedScore).toBe(74.8);
+    expect(result.weightedScore).toBe(75.8);
     expect(result.recommendation).toBe('no_go');
     expect(result.blockingReasons).toContain('Platform lock-in safety is 2 or lower.');
   });
@@ -116,7 +122,7 @@ describe('hackathon portfolio scoring', () => {
       estimatedHours: 90,
       founderConditions: ['Reduce the scope below 80 hours before approval.'],
     });
-    expect(calculateHackathonScore(conditional)).toBe(65.9);
+    expect(calculateHackathonScore(conditional)).toBe(66.5);
     expect(evaluateHackathonGoNoGo(conditional).recommendation).toBe('conditional_go');
     expect(
       evaluateHackathonGoNoGo({ ...conditional, founderConditions: [] }).recommendation,
