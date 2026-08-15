@@ -4,7 +4,6 @@ import type {
   FounderCommandName,
   FounderCommandResult,
 } from '../shared/venture-contracts';
-import type { CommandService } from './command-service';
 import { isVentureCommand, VentureCommandService } from './venture-command-service';
 import type { VentureService } from './venture-service';
 
@@ -30,10 +29,7 @@ export class FounderCommandService {
   readonly #ventures: VentureService;
   readonly #ventureCommands: VentureCommandService;
 
-  constructor(options: {
-    base: CommandService | FounderBaseCommandService;
-    ventures: VentureService;
-  }) {
+  constructor(options: { base: FounderBaseCommandService; ventures: VentureService }) {
     this.#base = options.base;
     this.#ventures = options.ventures;
     this.#ventureCommands = new VentureCommandService(options.ventures);
