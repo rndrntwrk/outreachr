@@ -18,31 +18,53 @@ function renderApplication(): void {
 }
 
 describe('Hackathon Studio portfolio', () => {
-  it('shows the deadline queue, component entries, distribution-weighted score and operating lanes', async () => {
+  it('shows deadline windows, operating lanes, watchlist context and component-specific next actions', async () => {
     window.location.hash = '#/hackathons';
     installBridge(hackathonBootstrapFixture());
     renderApplication();
 
     expect(await screen.findByRole('heading', { name: 'Hackathon Studio' })).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Hackathons' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Hackathon Studio' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Within 72 hours' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Within 14 days' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Within 30 days' })).toBeVisible();
+    expect(screen.getByText('BNB Hack Online')).toBeVisible();
+    expect(screen.getByText('Agentic Cinema')).toBeVisible();
     expect(screen.getAllByText('ETHGlobal Agentic Ethereum').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Sep 12').length).toBeGreaterThan(0);
-    expect(screen.getByRole('heading', { name: 'Apply now' })).toBeVisible();
+
+    expect(screen.getByRole('heading', { name: 'Next decisions' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Active builds' })).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Post-result conversion' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Submission-ready' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Submitted and judging' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Results and conversions' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Watchlist' })).toBeVisible();
+    expect(screen.getByText('Colosseum Eternal')).toBeVisible();
+
     expect(screen.getByText('Alice governed MCP operator for a bounded community workflow.')).toBeVisible();
+    expect(screen.getByText('Governed Agent Operator · v2')).toBeVisible();
+    expect(screen.getByText('Complete implementation and evidence')).toBeVisible();
     expect(screen.getByText('85')).toBeVisible();
     expect(screen.getAllByText('Strategic fit').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Distribution').length).toBeGreaterThan(0);
     expect(screen.getByText('72h')).toBeVisible();
   });
 
-  it('filters entries by state and component without mutating the source portfolio', async () => {
+  it('exposes all approved portfolio filters and preserves unknown values as selectable states', async () => {
     window.location.hash = '#/hackathons';
     installBridge(hackathonBootstrapFixture());
     renderApplication();
 
     await screen.findByRole('heading', { name: 'Hackathon Studio' });
+    expect(screen.getByLabelText('Opportunity status')).toBeVisible();
+    expect(screen.getByLabelText('Component')).toBeVisible();
+    expect(screen.getByLabelText('Canonical demo')).toBeVisible();
+    expect(screen.getByLabelText('Ecosystem')).toBeVisible();
+    expect(screen.getByLabelText('Format')).toBeVisible();
+    expect(screen.getByLabelText('Eligibility')).toBeVisible();
+    expect(screen.getByLabelText('Priority window')).toBeVisible();
+    expect(screen.getByLabelText('Entry state')).toBeVisible();
+    expect(within(screen.getByLabelText('Eligibility')).getByRole('option', { name: 'Unknown' })).toBeVisible();
+
     fireEvent.change(screen.getByLabelText('Entry state'), { target: { value: 'candidate' } });
     expect(screen.getByText('SW4P programmable creator settlement.')).toBeVisible();
     expect(
@@ -50,12 +72,14 @@ describe('Hackathon Studio portfolio', () => {
     ).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Entry state'), { target: { value: 'all' } });
-    fireEvent.change(screen.getByLabelText('Component'), { target: { value: 'venture:test' } });
+    fireEvent.change(screen.getByLabelText('Canonical demo'), {
+      target: { value: 'demo-version:test:2' },
+    });
     expect(screen.getByText('SW4P programmable creator settlement.')).toBeVisible();
     expect(screen.getByText('Alice governed MCP operator for a bounded community workflow.')).toBeVisible();
   });
 
-  it('creates a component-specific candidate without accepting a renderer-owned score', async () => {
+  it('creates a component-specific candidate without accepting renderer-owned score or lifecycle fields', async () => {
     window.location.hash = '#/hackathons';
     const fixture = hackathonBootstrapFixture();
     const command = vi.fn(async (name: string, payload: Record<string, unknown>) => {
@@ -67,11 +91,11 @@ describe('Hackathon Studio portfolio', () => {
           founderDecision: 'pending',
           founderRationale: null,
           state: 'candidate',
-          createdAt: '2026-08-15T12:00:00.000Z',
-          updatedAt: '2026-08-15T12:00:00.000Z',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
           leadVentureId: payload.leadVentureId,
           eligibilityStatus: null,
-          nextDeadlineAt: '2026-09-12T23:59:00.000Z',
+          nextDeadlineAt: null,
         };
       }
       throw new Error(`Unexpected renderer test command: ${name}`);
@@ -82,6 +106,8 @@ describe('Hackathon Studio portfolio', () => {
     await screen.findByRole('heading', { name: 'Hackathon Studio' });
     fireEvent.click(screen.getByRole('button', { name: 'New candidate entry' }));
     const dialog = screen.getByRole('dialog', { name: 'Create candidate entry' });
+    expect(within(dialog).getByLabelText('Legal entity')).toHaveValue('legal-entity:test');
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: '555stream supporting component' }));
     fireEvent.change(within(dialog).getByLabelText('Submission concept'), {
       target: { value: 'Human and agent live studio with a playable sponsor experience.' },
     });
@@ -107,7 +133,7 @@ describe('Hackathon Studio portfolio', () => {
         cycleId: 'cycle:ethglobal-agentic',
         legalEntityId: 'legal-entity:test',
         leadVentureId: 'venture:test',
-        supportingVentureIds: [],
+        supportingVentureIds: ['venture:media'],
         narrativeProfileId: 'narrative:test:hackathon',
         canonicalDemoVersionId: 'demo-version:test:2',
         trackIds: [],
@@ -122,5 +148,6 @@ describe('Hackathon Studio portfolio', () => {
     expect(payload).not.toHaveProperty('weightedScore');
     expect(payload).not.toHaveProperty('founderDecision');
     expect(payload).not.toHaveProperty('state');
+    expect(payload).not.toHaveProperty('eligibilityStatus');
   });
 });
