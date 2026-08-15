@@ -6,7 +6,6 @@ import type {
 import type {
   FounderAppBootstrap,
   FounderBootstrapCommandName,
-  FounderCommandMap,
   FounderCommandName,
   FounderCommandResult,
 } from '../shared/venture-contracts';
@@ -76,6 +75,10 @@ export class StudioCommandService {
     }
     const opportunities = this.#opportunities.bootstrap();
     const hackathons = await this.#hackathons.bootstrap();
-    return { ...(result as FounderAppBootstrap), ...opportunities, ...hackathons } as StudioCommandResult<K>;
+    return {
+      ...(result as FounderAppBootstrap),
+      ...opportunities,
+      ...hackathons,
+    } as StudioCommandResult<K>;
   }
 }
