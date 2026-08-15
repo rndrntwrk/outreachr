@@ -30,7 +30,7 @@ describe('HackathonService record identity', () => {
     vault = null;
   });
 
-  it('reuses the one build and distribution-plan identity when the caller omits IDs', async () => {
+  it('reuses one build and distribution identity while preserving lifecycle transitions', async () => {
     directory = await temporaryDirectory('hackathon-identity');
     vault = await initializedVault(directory, () => FIXED_NOW);
     await onboard(vault);
@@ -84,6 +84,7 @@ describe('HackathonService record identity', () => {
       completedAt: null,
     });
     expect(approvedBuild.id).toBe(draftBuild.id);
+    expect(approvedBuild.status).toBe('approved');
 
     const draftDistribution = await hackathons.saveDistribution({
       entryId,
@@ -98,5 +99,14 @@ describe('HackathonService record identity', () => {
       contentSha256: SHA256,
     });
     expect(activeDistribution.id).toBe(draftDistribution.id);
+    expect(activeDistribution.status).toBe('active');
+    expect(
+      Number(
+        vault.vault.scalar(
+          'SELECT COUNT(*) FROM hackathon_distribution_plans WHERE entry_id=?',
+          [entryId],
+        ),
+      ),
+    ).toBe(1);
   });
 });
