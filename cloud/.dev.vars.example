@@ -1,0 +1,3 @@
+# Public Worker development variables. This file contains no secrets.
+ENVIRONMENT=development
+SERVICE_VERSION=local-development
