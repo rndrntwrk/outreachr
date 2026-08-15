@@ -37,6 +37,15 @@ function usableStringList(value: unknown): string[] | null {
 }
 
 function synthesizedDetail(rule: HackathonRule): EligibilityRuleDetail | null {
+  if (
+    rule.blocking &&
+    (rule.reviewState !== 'accepted' ||
+      rule.confidence === 'unknown' ||
+      rule.confidence === 'stale')
+  ) {
+    return null;
+  }
+
   const value = asRecord(rule.value);
   if (!value) return null;
 
@@ -92,7 +101,7 @@ export function evaluateHackathonEligibility(
 
   const base = evaluateBaseEligibility(founderProfile, delegated);
   const baseById = new Map(base.details.map((detail) => [detail.ruleId, detail]));
-  const details = rules.map((rule) => synthesized.get(rule.id) ?? baseById.get(rule.id)!).filter(Boolean);
+  const details = rules.map((rule) => synthesized.get(rule.id) ?? baseById.get(rule.id)!);
   const blockingDetails = details.filter((detail) => detail.blocking);
   const status: EligibilityRuleStatus = blockingDetails.some(
     (detail) => detail.status === 'ineligible',
