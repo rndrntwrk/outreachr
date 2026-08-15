@@ -1,5 +1,6 @@
 import type { Database } from 'sql.js';
 
+import { HACKATHON_HARDENING_SQL } from './hackathon-hardening.js';
 import { HACKATHON_INVARIANT_SQL } from './hackathon-invariants.js';
 import { HACKATHON_SCHEMA_SQL } from './hackathon-migration.js';
 import { MIGRATIONS as LEGACY_MIGRATIONS } from './migrations-v1-v10.js';
@@ -16,7 +17,7 @@ export interface Migration {
 const HACKATHON_STUDIO_MIGRATION: Migration = {
   version: 11,
   name: 'opportunities_and_hackathon_studio',
-  sql: `${OPPORTUNITY_SCHEMA_SQL}\n${HACKATHON_SCHEMA_SQL}\n${HACKATHON_INVARIANT_SQL}`,
+  sql: `${OPPORTUNITY_SCHEMA_SQL}\n${HACKATHON_SCHEMA_SQL}\n${HACKATHON_INVARIANT_SQL}\n${HACKATHON_HARDENING_SQL}`,
 };
 
 export const MIGRATIONS: readonly Migration[] = [
