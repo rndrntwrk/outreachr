@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://outreachr.app/schemas/update-manifest.schema.json",
+  "title": "Outreachr signed update manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "channel",
+    "version",
+    "minimumSupportedVersion",
+    "publishedAt",
+    "artifacts",
+    "revokedVersions",
+    "keyId",
+    "signature"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "channel": {
+      "enum": ["dev", "staging", "stable"]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "minimumSupportedVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "publishedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "platform",
+          "architecture",
+          "key",
+          "sha256",
+          "bytes",
+          "signingStatus",
+          "sbomKey",
+          "signingStatusKey"
+        ],
+        "properties": {
+          "platform": {
+            "enum": ["darwin", "win32", "linux"]
+          },
+          "architecture": {
+            "enum": ["x64", "arm64"]
+          },
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "signingStatus": {
+            "enum": ["signed", "adhoc", "unsigned"]
+          },
+          "sbomKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "signingStatusKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          }
+        }
+      }
+    },
+    "revokedVersions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+      }
+    },
+    "keyId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "signature": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 4096
+    }
+  }
+}
