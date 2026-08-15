@@ -50,16 +50,15 @@ export class FounderCommandService {
     untrustedPayload: unknown,
   ): Promise<FounderCommandResult<K>> {
     if (isVentureCommand(name)) {
-      return this.#ventureCommands.execute(name, untrustedPayload) as Promise<
-        FounderCommandResult<K>
-      >;
+      const result = await this.#ventureCommands.execute(name, untrustedPayload);
+      return result as unknown as FounderCommandResult<K>;
     }
 
     const result = await this.#base.execute(name as keyof CommandMap, untrustedPayload);
     if (!APP_BOOTSTRAP_COMMANDS.has(name)) {
-      return result as FounderCommandResult<K>;
+      return result as unknown as FounderCommandResult<K>;
     }
     const authority = await this.#ventures.bootstrap();
-    return { ...(result as AppBootstrap), ...authority } as FounderCommandResult<K>;
+    return { ...(result as AppBootstrap), ...authority } as unknown as FounderCommandResult<K>;
   }
 }
