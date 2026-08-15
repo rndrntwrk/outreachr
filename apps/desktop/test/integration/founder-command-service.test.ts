@@ -42,7 +42,7 @@ class StubBaseCommandService implements FounderBaseCommandService {
     if (name === 'onboarding.complete') {
       return (await this.#vault.completeOnboarding(
         untrustedPayload as FounderSetupInput,
-      )) as CommandResultMap[K];
+      )) as unknown as CommandResultMap[K];
     }
     if (name === 'search') {
       return [
@@ -53,7 +53,7 @@ class StubBaseCommandService implements FounderBaseCommandService {
           subtitle: 'Programmable settlement',
           href: '/knowledge',
         },
-      ] as CommandResultMap[K];
+      ] as unknown as CommandResultMap[K];
     }
     throw new Error(`Stub base command is not implemented: ${String(name)}`);
   }
