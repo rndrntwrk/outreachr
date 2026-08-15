@@ -57,6 +57,28 @@ function seedOpportunity(core: CoreVault): void {
 }
 
 describe('founder review boundaries', () => {
+  it('preserves canonical organization normalization behind the guarded repository', () => {
+    const core = new CoreVault(SQL, { appliedAt: NOW });
+    const repository = new OpportunityRepository(core);
+    const organization = repository.upsertOrganization({
+      id: 'organization:normalized',
+      name: '  Example   Protocol  ',
+      normalizedName: 'caller supplied value is ignored',
+      kind: 'protocol',
+      website: null,
+      description: null,
+      linkedFirmId: null,
+      isPublic: true,
+      contributionEligible: false,
+      origin: 'local',
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    expect(organization.name).toBe('Example   Protocol');
+    expect(organization.normalizedName).toBe('example protocol');
+    core.close();
+  });
+
   it('requires reviewSource before opportunity evidence can be accepted', () => {
     const core = new CoreVault(SQL, { appliedAt: NOW });
     seedOpportunity(core);
