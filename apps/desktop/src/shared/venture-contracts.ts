@@ -229,14 +229,26 @@ export interface VentureCommandResultMap {
   'capitalMandate.save': CapitalMandateSummary;
 }
 
+export type FounderBootstrapCommandName =
+  | 'onboarding.complete'
+  | 'investor.target'
+  | 'pipeline.move'
+  | 'connector.syncCalendar'
+  | 'connector.syncMail'
+  | 'backup.restore';
+
 export type FounderCommandMap = CommandMap & VentureCommandMap;
-export type FounderCommandResultMap = CommandResultMap & VentureCommandResultMap;
+export type FounderCommandResultMap = Omit<CommandResultMap, FounderBootstrapCommandName> &
+  Record<FounderBootstrapCommandName, FounderAppBootstrap> &
+  VentureCommandResultMap;
 export type FounderCommandName = keyof FounderCommandMap;
 export type VentureCommandName = keyof VentureCommandMap;
 
 export type FounderCommandResult<K extends FounderCommandName> =
   K extends keyof VentureCommandResultMap
     ? VentureCommandResultMap[K]
-    : K extends keyof CommandResultMap
-      ? CommandResultMap[K]
-      : never;
+    : K extends FounderBootstrapCommandName
+      ? FounderAppBootstrap
+      : K extends keyof CommandResultMap
+        ? CommandResultMap[K]
+        : never;
