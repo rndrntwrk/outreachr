@@ -12,6 +12,7 @@ import {
   canonicalDemoSeedDigest,
   importCanonicalDemoSeed,
   verifyAuditChain,
+  type CanonicalDemoSeedPackage,
 } from '../src/index.js';
 
 const NOW = '2026-08-15T08:00:00.000Z';
@@ -30,10 +31,16 @@ beforeAll(async () => {
   ) as unknown;
 });
 
-function cloneSeed(): ReturnType<typeof CanonicalDemoSeedPackageSchema.parse> {
+function cloneSeed(): CanonicalDemoSeedPackage {
   return CanonicalDemoSeedPackageSchema.parse(
     JSON.parse(JSON.stringify(seedInput)) as unknown,
   );
+}
+
+function firstDemo(seed: CanonicalDemoSeedPackage): CanonicalDemoSeedPackage['demos'][number] {
+  const first = seed.demos[0];
+  if (!first) throw new Error('Canonical demo seed is unexpectedly empty');
+  return first;
 }
 
 describe('RNDRNTWRK canonical demo seed', () => {
@@ -83,12 +90,10 @@ describe('RNDRNTWRK canonical demo seed', () => {
 
     const changed = cloneSeed();
     changed.demos[0] = {
-      ...changed.demos[0],
+      ...firstDemo(changed),
       approvedClaims: ['Different public claim.'],
     };
-    expect(() =>
-      importCanonicalDemoSeed(repository, changed, { importedAt: NOW }),
-    ).toThrow(
+    expect(() => importCanonicalDemoSeed(repository, changed, { importedAt: NOW })).toThrow(
       'Canonical demo seed package rndrntwrk-canonical-demos was already imported with a different digest',
     );
     expect(verifyAuditChain(core).ok).toBe(true);
@@ -97,7 +102,7 @@ describe('RNDRNTWRK canonical demo seed', () => {
 
   it('rejects approval of an unbound all-zero baseline', () => {
     const invalid = cloneSeed();
-    invalid.demos[0] = { ...invalid.demos[0], status: 'approved' };
+    invalid.demos[0] = { ...firstDemo(invalid), status: 'approved' };
     expect(CanonicalDemoSeedPackageSchema.safeParse(invalid).success).toBe(false);
   });
 
