@@ -21,6 +21,7 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  Trophy,
   Users,
 } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from '../lib/router';
@@ -30,6 +31,7 @@ import { IconButton, StateDot, ToastRegion } from './ui';
 
 const primaryNavigation = [
   { to: '/', label: 'Up next', icon: Inbox },
+  { to: '/hackathons', label: 'Hackathons', icon: Trophy },
   { to: '/round', label: 'Round overview', icon: CircleDollarSign },
   { to: '/ventures', label: 'Ventures', icon: Landmark },
   { to: '/investors', label: 'Investors', icon: Users },
