@@ -7,12 +7,13 @@ import {
   useMemo,
   useState,
 } from 'react';
+import type { CommandMap, InvestorDetail } from '../../../shared/contracts';
 import type {
-  AppBootstrap,
-  CommandMap,
-  CommandResultMap,
-  InvestorDetail,
-} from '../../../shared/contracts';
+  FounderAppBootstrap,
+  FounderCommandMap,
+  FounderCommandName,
+  FounderCommandResult,
+} from '../../../shared/venture-contracts';
 
 interface ToastMessage {
   id: number;
@@ -22,16 +23,16 @@ interface ToastMessage {
 }
 
 interface WorkspaceValue {
-  data: AppBootstrap | null;
+  data: FounderAppBootstrap | null;
   loading: boolean;
   error: string | null;
   refreshing: boolean;
   toasts: ToastMessage[];
   refresh: () => Promise<void>;
-  command: <K extends keyof CommandMap>(
+  command: <K extends FounderCommandName>(
     name: K,
-    payload: CommandMap[K],
-  ) => Promise<CommandResultMap[K]>;
+    payload: FounderCommandMap[K],
+  ) => Promise<FounderCommandResult<K>>;
   getInvestor: (id: string) => Promise<InvestorDetail>;
   notify: (toast: Omit<ToastMessage, 'id'>) => void;
   dismissToast: (id: number) => void;
@@ -50,8 +51,19 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred.';
 }
 
+function executeFounderCommand<K extends FounderCommandName>(
+  name: K,
+  payload: FounderCommandMap[K],
+): Promise<FounderCommandResult<K>> {
+  const command = window.outreachr.command as unknown as <N extends FounderCommandName>(
+    commandName: N,
+    commandPayload: FounderCommandMap[N],
+  ) => Promise<FounderCommandResult<N>>;
+  return command(name, payload);
+}
+
 export function WorkspaceProvider({ children }: PropsWithChildren): React.JSX.Element {
-  const [data, setData] = useState<AppBootstrap | null>(null);
+  const [data, setData] = useState<FounderAppBootstrap | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +101,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren): React.JSX.El
     else setLoading(true);
 
     try {
-      const bootstrap = await window.outreachr.bootstrap();
+      const bootstrap = (await window.outreachr.bootstrap()) as FounderAppBootstrap;
       setData(bootstrap);
       setError(null);
     } catch (cause) {
@@ -107,16 +119,16 @@ export function WorkspaceProvider({ children }: PropsWithChildren): React.JSX.El
   const refresh = useCallback(() => load(true), [load]);
 
   const command = useCallback(
-    async <K extends keyof CommandMap>(name: K, payload: CommandMap[K]) => {
+    async <K extends FounderCommandName>(name: K, payload: FounderCommandMap[K]) => {
       try {
-        const result = await window.outreachr.command(name, payload);
+        const result = await executeFounderCommand(name, payload);
         if (
           name === 'onboarding.complete' ||
           name === 'investor.target' ||
           name === 'pipeline.move' ||
           name === 'backup.restore'
         ) {
-          setData(result as AppBootstrap);
+          setData(result as FounderAppBootstrap);
         } else if (
           name.startsWith('task.') ||
           name.startsWith('meeting.') ||
@@ -132,7 +144,12 @@ export function WorkspaceProvider({ children }: PropsWithChildren): React.JSX.El
           name.startsWith('suppression.') ||
           name.startsWith('person.') ||
           name.startsWith('agent.') ||
-          name.startsWith('knowledge.')
+          name.startsWith('knowledge.') ||
+          name.startsWith('legalEntity.') ||
+          name.startsWith('venture.') ||
+          name.startsWith('narrative.') ||
+          name.startsWith('canonicalDemo.') ||
+          name.startsWith('capitalMandate.')
         ) {
           await load(true);
         }
