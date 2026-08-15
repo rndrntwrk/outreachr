@@ -63,7 +63,7 @@ export class StudioCommandService {
     untrustedPayload: unknown,
   ): Promise<StudioCommandResult<K>> {
     if (isHackathonCommand(name)) {
-      return this.#hackathonCommands.execute(name, untrustedPayload) as Promise<
+      return this.#hackathonCommands.execute(name, untrustedPayload) as unknown as Promise<
         StudioCommandResult<K>
       >;
     }
@@ -71,7 +71,7 @@ export class StudioCommandService {
     const founderName = name as FounderCommandName;
     const result = await this.#founder.execute(founderName, untrustedPayload);
     if (!FOUNDER_BOOTSTRAP_COMMANDS.has(founderName as FounderBootstrapCommandName)) {
-      return result as StudioCommandResult<K>;
+      return result as unknown as StudioCommandResult<K>;
     }
     const opportunities = this.#opportunities.bootstrap();
     const hackathons = await this.#hackathons.bootstrap();
@@ -79,6 +79,6 @@ export class StudioCommandService {
       ...(result as FounderAppBootstrap),
       ...opportunities,
       ...hackathons,
-    } as StudioCommandResult<K>;
+    } as unknown as StudioCommandResult<K>;
   }
 }
