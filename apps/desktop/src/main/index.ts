@@ -1,4 +1,4 @@
-import { dirname, resolve, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   app,
@@ -10,11 +10,13 @@ import {
   shell,
   type IpcMainInvokeEvent,
 } from 'electron';
-import { IPC_CHANNELS, type AgentEvent, type CommandMap } from '../shared/contracts';
+import { IPC_CHANNELS, type AgentEvent } from '../shared/contracts';
+import type { FounderCommandMap } from '../shared/venture-contracts';
 import { DesktopAgentService } from './agent-service';
-import { CommandService } from './command-service';
+import { CommandService as BaseCommandService } from './command-service';
 import { ConnectorService } from './connector-service';
 import { createConnectorTestSeam } from './connector-test-seam';
+import { FounderCommandService } from './founder-command-service';
 import { DesktopMcpBridge } from './mcp-service';
 import {
   isAllowedExternalUrl,
@@ -24,6 +26,7 @@ import {
 } from './navigation-security';
 import { ElectronSecretStoreBackend, SecureStore } from './secure-store';
 import { VaultService } from './vault-service';
+import { VentureService } from './venture-service';
 
 let mainWindow: BrowserWindow | null = null;
 let vaultService: VaultService | null = null;
@@ -75,7 +78,7 @@ function assertTrustedIpcSender(event: IpcMainInvokeEvent): void {
 }
 
 async function createWindow(
-  commandService: CommandService,
+  commandService: FounderCommandService,
   launchHooks: DesktopLaunchHooks,
 ): Promise<BrowserWindow> {
   const rendererEntry = join(mainModuleDirectory, '../renderer/index.html');
@@ -123,7 +126,7 @@ async function createWindow(
     });
     ipcMain.handle(
       IPC_CHANNELS.command,
-      async (event, command: keyof CommandMap, payload: unknown) => {
+      async (event, command: keyof FounderCommandMap, payload: unknown) => {
         assertTrustedIpcSender(event);
         const result = await commandService.execute(command, payload);
         if (command === 'data.reset') {
@@ -212,11 +215,12 @@ async function start(): Promise<void> {
   );
   session.defaultSession.setPermissionCheckHandler(() => false);
 
+  const resourceDirectory = resourcesRoot();
   const vault = new VaultService({
     appVersion: app.getVersion(),
     platform: process.platform,
     dataDirectory: app.getPath('userData'),
-    resourceDirectory: resourcesRoot(),
+    resourceDirectory,
   });
   startupDiagnostic('initializing vault');
   await vault.initialize();
@@ -252,7 +256,7 @@ async function start(): Promise<void> {
   startupDiagnostic('local MCP bridge initialized');
   const agents = await DesktopAgentService.create({
     dataDirectory: app.getPath('userData'),
-    resourcesRoot: resourcesRoot(),
+    resourcesRoot: resourceDirectory,
     openExternal,
     mcp,
     credentialStore: secureStore,
@@ -261,7 +265,14 @@ async function start(): Promise<void> {
   });
   startupDiagnostic('agent runtime initialized');
   agentService = agents;
-  const commands = new CommandService({ vault, connectors, agents, emitAgentEvent });
+  const baseCommands = new BaseCommandService({
+    vault,
+    connectors,
+    agents,
+    emitAgentEvent,
+  });
+  const ventures = new VentureService({ vault, resourceDirectory });
+  const commands = new FounderCommandService({ base: baseCommands, ventures });
   mainWindow = await createWindow(commands, launchHooks);
   startupDiagnostic('first window created');
 
