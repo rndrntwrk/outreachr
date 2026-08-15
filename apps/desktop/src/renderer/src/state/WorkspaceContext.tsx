@@ -7,7 +7,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import type { CommandMap, InvestorDetail } from '../../../shared/contracts';
+import type { InvestorDetail } from '../../../shared/contracts';
 import type {
   FounderAppBootstrap,
   FounderCommandMap,
