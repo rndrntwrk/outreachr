@@ -10,6 +10,7 @@ import { InvestorsPage } from './pages/InvestorsPage';
 import { KnowledgePage } from './pages/KnowledgePage';
 import { ListsPage } from './pages/ListsPage';
 import { MeetingsPage } from './pages/MeetingsPage';
+import { NarrativesPage } from './pages/NarrativesPage';
 import { OnboardingFlow } from './pages/OnboardingFlow';
 import { OutreachPage } from './pages/OutreachPage';
 import { PipelinePage } from './pages/PipelinePage';
@@ -18,6 +19,7 @@ import { RoundOverviewPage } from './pages/RoundOverviewPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TasksPage } from './pages/TasksPage';
 import { UpNextPage } from './pages/UpNextPage';
+import { VenturesPage } from './pages/VenturesPage';
 
 export function App(): React.JSX.Element {
   const { data, loading, error, refreshing, refresh } = useWorkspace();
@@ -38,6 +40,7 @@ export function App(): React.JSX.Element {
       <Routes>
         <Route path="/" element={<UpNextPage />} />
         <Route path="/round" element={<RoundOverviewPage />} />
+        <Route path="/ventures" element={<VenturesPage />} />
         <Route path="/investors" element={<InvestorsPage />} />
         <Route path="/investors/:investorId" element={<InvestorDetailPage />} />
         <Route path="/pipeline" element={<PipelinePage />} />
@@ -45,6 +48,7 @@ export function App(): React.JSX.Element {
         <Route path="/outreach" element={<OutreachPage />} />
         <Route path="/meetings" element={<MeetingsPage />} />
         <Route path="/knowledge" element={<KnowledgePage />} />
+        <Route path="/narratives" element={<NarrativesPage />} />
         <Route path="/agent" element={<AgentPage />} />
         <Route path="/review" element={<ReviewPage />} />
         <Route path="/lists" element={<ListsPage />} />
