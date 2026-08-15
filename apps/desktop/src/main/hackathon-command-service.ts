@@ -13,7 +13,6 @@ const nullableUrl = z.string().trim().url().max(4_096).nullable();
 const nullableDate = z.string().date().nullable();
 const nullableDateTime = z.string().datetime({ offset: true }).nullable();
 const rating = z.number().int().min(1).max(10);
-const sha256 = z.string().regex(/^[a-f0-9]{64}$/u);
 
 const organizationKind = z.enum([
   'company',
@@ -312,10 +311,14 @@ export class HackathonCommandService {
     let result: unknown;
     switch (name) {
       case 'organization.save':
-        result = await this.#service.saveOrganization(payload as HackathonCommandMap['organization.save']);
+        result = await this.#service.saveOrganization(
+          payload as HackathonCommandMap['organization.save'],
+        );
         break;
       case 'opportunity.save':
-        result = await this.#service.saveOpportunity(payload as HackathonCommandMap['opportunity.save']);
+        result = await this.#service.saveOpportunity(
+          payload as HackathonCommandMap['opportunity.save'],
+        );
         break;
       case 'opportunity.source.review':
         result = await this.#service.reviewOpportunitySource(
@@ -323,19 +326,29 @@ export class HackathonCommandService {
         );
         break;
       case 'hackathon.cycle.save':
-        result = await this.#service.saveCycle(payload as HackathonCommandMap['hackathon.cycle.save']);
+        result = await this.#service.saveCycle(
+          payload as HackathonCommandMap['hackathon.cycle.save'],
+        );
         break;
       case 'hackathon.track.save':
-        result = await this.#service.saveTrack(payload as HackathonCommandMap['hackathon.track.save']);
+        result = await this.#service.saveTrack(
+          payload as HackathonCommandMap['hackathon.track.save'],
+        );
         break;
       case 'hackathon.sponsor.save':
-        result = await this.#service.saveSponsor(payload as HackathonCommandMap['hackathon.sponsor.save']);
+        result = await this.#service.saveSponsor(
+          payload as HackathonCommandMap['hackathon.sponsor.save'],
+        );
         break;
       case 'hackathon.bounty.save':
-        result = await this.#service.saveBounty(payload as HackathonCommandMap['hackathon.bounty.save']);
+        result = await this.#service.saveBounty(
+          payload as HackathonCommandMap['hackathon.bounty.save'],
+        );
         break;
       case 'hackathon.rule.save':
-        result = await this.#service.saveRule(payload as HackathonCommandMap['hackathon.rule.save']);
+        result = await this.#service.saveRule(
+          payload as HackathonCommandMap['hackathon.rule.save'],
+        );
         break;
       case 'hackathon.rule.review': {
         const value = payload as HackathonCommandMap['hackathon.rule.review'];
@@ -343,7 +356,9 @@ export class HackathonCommandService {
         break;
       }
       case 'hackathon.entry.create':
-        result = await this.#service.createEntry(payload as HackathonCommandMap['hackathon.entry.create']);
+        result = await this.#service.createEntry(
+          payload as HackathonCommandMap['hackathon.entry.create'],
+        );
         break;
       case 'hackathon.entry.evaluateEligibility': {
         const value = payload as HackathonCommandMap['hackathon.entry.evaluateEligibility'];
@@ -356,7 +371,9 @@ export class HackathonCommandService {
         break;
       }
       case 'hackathon.entry.decide':
-        result = await this.#service.decideEntry(payload as HackathonCommandMap['hackathon.entry.decide']);
+        result = await this.#service.decideEntry(
+          payload as HackathonCommandMap['hackathon.entry.decide'],
+        );
         break;
       case 'hackathon.entry.transition':
         result = await this.#service.transitionEntry(
