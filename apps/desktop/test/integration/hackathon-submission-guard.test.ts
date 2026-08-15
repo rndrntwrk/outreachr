@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import { HackathonService } from '../../src/main/hackathon-service';
+import type { HackathonEntryDetail } from '../../src/shared/hackathon-contracts';
 
 const BUILD_COMMIT = 'a'.repeat(40);
 const OTHER_COMMIT = 'b'.repeat(40);
 
 class SubmissionGuardService extends HackathonService {
-  override async getEntry(): Promise<never> {
+  override async getEntry(_id: string): Promise<HackathonEntryDetail> {
     return {
       build: { currentCommitSha: BUILD_COMMIT },
-    } as never;
+    } as unknown as HackathonEntryDetail;
   }
 }
 
