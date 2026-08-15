@@ -5,4 +5,5 @@ export * from './migrations.js';
 export * from './repository.js';
 export * from './seed.js';
 export * from './validation.js';
+export * from './venture-repository.js';
 export * from './venture-validation.js';
