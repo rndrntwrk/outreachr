@@ -15,7 +15,9 @@ import {
   type HackathonRule,
   type HackathonRuleInput,
 } from './hackathon-validation-v11.js';
-import { HackathonRepository as PersistedHackathonRepository } from './hackathon-repository-final.js';
+import {
+  HackathonRepository as PersistedHackathonRepository,
+} from './hackathon-repository-final.js';
 
 interface BuildStateRow {
   entry_id: string;
@@ -48,7 +50,9 @@ interface DistributionItemRow {
   updated_at: string;
 }
 
-const BUILD_TRANSITIONS: Readonly<Record<HackathonBuild['status'], readonly HackathonBuild['status'][]>> = {
+const BUILD_TRANSITIONS: Readonly<
+  Record<HackathonBuild['status'], readonly HackathonBuild['status'][]>
+> = {
   draft: ['draft', 'approved', 'active', 'completed', 'cancelled'],
   approved: ['approved', 'active', 'completed', 'cancelled'],
   active: ['active', 'completed', 'cancelled'],
@@ -118,7 +122,8 @@ export class HackathonRepository extends PersistedHackathonRepository {
         );
         if (unresolved > 0) {
           throw new Error(
-            'Entry is not ready for a go decision: every blocking rule requires accepted, current evidence.',
+            'Entry is not ready for a go decision: every blocking rule requires accepted, ' +
+              'current evidence.',
           );
         }
       }
@@ -137,7 +142,9 @@ export class HackathonRepository extends PersistedHackathonRepository {
         throw new Error('A hackathon build cannot be moved to another entry.');
       }
       if (!BUILD_TRANSITIONS[existing.status].includes(value.status)) {
-        throw new Error(`Invalid hackathon build transition from ${existing.status} to ${value.status}.`);
+        throw new Error(
+          `Invalid hackathon build transition from ${existing.status} to ${value.status}.`,
+        );
       }
     }
     return super.saveBuild(value);
