@@ -11,13 +11,14 @@ import {
   type IpcMainInvokeEvent,
 } from 'electron';
 import { IPC_CHANNELS, type AgentEvent } from '../shared/contracts';
-import type { CompleteFounderCommandMap } from '../shared/hackathon-contracts';
+import type { FounderOperationsCommandMap } from '../shared/hackathon-execution-contracts';
 import { DesktopAgentService } from './agent-service';
 import { CommandService as BaseCommandService } from './command-service';
 import { CompleteFounderCommandService } from './complete-founder-command-service';
 import { ConnectorService } from './connector-service';
 import { createConnectorTestSeam } from './connector-test-seam';
 import { FounderCommandService } from './founder-command-service';
+import { FounderOperationsCommandService } from './founder-operations-command-service';
 import { HackathonStudioService } from './hackathon-studio-service';
 import { DesktopMcpBridge } from './mcp-service';
 import {
@@ -80,7 +81,7 @@ function assertTrustedIpcSender(event: IpcMainInvokeEvent): void {
 }
 
 async function createWindow(
-  commandService: CompleteFounderCommandService,
+  commandService: FounderOperationsCommandService,
   launchHooks: DesktopLaunchHooks,
 ): Promise<BrowserWindow> {
   const rendererEntry = join(mainModuleDirectory, '../renderer/index.html');
@@ -128,7 +129,7 @@ async function createWindow(
     });
     ipcMain.handle(
       IPC_CHANNELS.command,
-      async (event, command: keyof CompleteFounderCommandMap, payload: unknown) => {
+      async (event, command: keyof FounderOperationsCommandMap, payload: unknown) => {
         assertTrustedIpcSender(event);
         const result = await commandService.execute(command, payload);
         if (command === 'data.reset') {
@@ -276,8 +277,12 @@ async function start(): Promise<void> {
   const ventures = new VentureService({ vault, resourceDirectory });
   const founderCommands = new FounderCommandService({ base: baseCommands, ventures });
   const hackathons = new HackathonStudioService({ vault });
-  const commands = new CompleteFounderCommandService({
+  const completeCommands = new CompleteFounderCommandService({
     base: founderCommands,
+    hackathons,
+  });
+  const commands = new FounderOperationsCommandService({
+    base: completeCommands,
     hackathons,
   });
   mainWindow = await createWindow(commands, launchHooks);
