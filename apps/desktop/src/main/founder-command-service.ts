@@ -17,7 +17,7 @@ const APP_BOOTSTRAP_COMMANDS = new Set<string>([
   'backup.restore',
 ]);
 
-interface BaseCommandService {
+export interface FounderBaseCommandService {
   bootstrap(): Promise<AppBootstrap>;
   execute<K extends keyof CommandMap>(
     name: K,
@@ -26,11 +26,14 @@ interface BaseCommandService {
 }
 
 export class FounderCommandService {
-  readonly #base: BaseCommandService;
+  readonly #base: FounderBaseCommandService;
   readonly #ventures: VentureService;
   readonly #ventureCommands: VentureCommandService;
 
-  constructor(options: { base: CommandService | BaseCommandService; ventures: VentureService }) {
+  constructor(options: {
+    base: CommandService | FounderBaseCommandService;
+    ventures: VentureService;
+  }) {
     this.#base = options.base;
     this.#ventures = options.ventures;
     this.#ventureCommands = new VentureCommandService(options.ventures);
