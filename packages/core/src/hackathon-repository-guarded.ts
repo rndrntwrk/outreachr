@@ -1,4 +1,6 @@
-import { HackathonRepository as ReviewedHackathonRepository } from './hackathon-repository-reviewed.js';
+import {
+  HackathonRepository as ReviewedHackathonRepository,
+} from './hackathon-repository-reviewed.js';
 import {
   EntryTransitionSchema,
   HackathonCycleSchema,
@@ -65,7 +67,8 @@ export class HackathonRepository extends ReviewedHackathonRepository {
       );
       if (unresolved > 0) {
         throw new Error(
-          'Hackathon entry is not submission ready: blocking rules require accepted, current evidence.',
+          'Hackathon entry is not submission ready: blocking rules require accepted, ' +
+            'current evidence.',
         );
       }
     }
