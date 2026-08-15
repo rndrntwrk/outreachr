@@ -1,7 +1,8 @@
 import type { AppBootstrap, OutreachrBridge } from '../../src/shared/contracts';
+import type { FounderAppBootstrap } from '../../src/shared/venture-contracts';
 import { vi } from 'vitest';
 
-export function bootstrapFixture(firstRun = false): AppBootstrap {
+export function bootstrapFixture(firstRun = false): FounderAppBootstrap {
   return {
     appVersion: '0.1.0-test',
     platform: 'darwin',
@@ -51,6 +52,7 @@ export function bootstrapFixture(firstRun = false): AppBootstrap {
         },
         fitScore: 90,
         fitReasons: ['Invests at seed.'],
+        expectedCheckUsd: null,
         confidence: 'verified',
         sourceCount: 3,
         peopleCount: 1,
@@ -175,6 +177,183 @@ export function bootstrapFixture(firstRun = false): AppBootstrap {
       meetings: 0,
       commitments: 0,
     },
+    legalEntities: firstRun
+      ? []
+      : [
+          {
+            id: 'legal-entity:test',
+            legalName: 'Local Labs, Inc.',
+            displayName: 'Local Labs',
+            jurisdiction: 'Delaware',
+            entityType: 'corporation',
+            status: 'active',
+            incorporationReference: 'Private reference',
+            capTableReference: 'Private cap table reference',
+            founderAuthority: 'The founder controls external commitments.',
+            publicWebsite: 'https://local.test',
+          },
+        ],
+    ventures: firstRun
+      ? []
+      : [
+          {
+            id: 'venture:test',
+            legalEntityId: 'legal-entity:test',
+            name: 'Local Labs',
+            category: 'Trusted AI infrastructure',
+            utility: 'A founder-operated system for trustworthy AI work.',
+            stage: 'pre_production',
+            status: 'active',
+            publicUrl: 'https://local.test',
+            defaultNarrativeProfileId: 'narrative:test:2',
+            currentDemoVersionId: 'demo-version:test:2',
+          },
+        ],
+    narrativeProfiles: firstRun
+      ? []
+      : [
+          {
+            id: 'narrative:test:2',
+            legalEntityId: 'legal-entity:test',
+            ventureId: 'venture:test',
+            purpose: 'investor',
+            version: 2,
+            approvalState: 'approved',
+            contentSha256: 'a'.repeat(64),
+            approvedAt: '2026-07-31T19:00:00.000Z',
+            descriptions: {
+              words50: 'Local Labs gives founders a trustworthy AI operating environment.',
+              words100:
+                'Local Labs gives founders a trustworthy operating environment for useful AI work.',
+              words250:
+                'Local Labs gives founders a trustworthy operating environment for useful AI work, evidence and controlled external actions.',
+            },
+            problem: 'Founders need useful AI without surrendering external authority.',
+            productWedge: 'One founder-controlled workspace for agent-assisted execution.',
+            whyNow: 'Agents can do more work, but authority boundaries have not kept pace.',
+            technicalDifferentiation: 'Local data, bounded tools and exact founder approval.',
+            evidenceFraming: 'Use dated, reproducible implementation evidence.',
+            businessModel: 'Founder software and infrastructure services.',
+            useOfFunds: 'Production hardening and design-partner delivery.',
+            claimsBoundary: 'Do not present planned integrations as current production behavior.',
+            deckReference: '/documents/local-labs-deck.pdf',
+            demoReference: 'https://demo.local.test',
+          },
+          {
+            id: 'narrative:test:1',
+            legalEntityId: 'legal-entity:test',
+            ventureId: 'venture:test',
+            purpose: 'investor',
+            version: 1,
+            approvalState: 'superseded',
+            contentSha256: 'b'.repeat(64),
+            approvedAt: '2026-07-01T19:00:00.000Z',
+            descriptions: {
+              words50: 'Earlier Local Labs investor narrative.',
+              words100: 'Earlier Local Labs investor narrative for the first founder review.',
+              words250: 'Earlier Local Labs investor narrative retained as immutable history.',
+            },
+            problem: 'Earlier problem statement.',
+            productWedge: 'Earlier product wedge.',
+            whyNow: 'Earlier why now.',
+            technicalDifferentiation: 'Earlier differentiation.',
+            evidenceFraming: 'Earlier evidence framing.',
+            businessModel: 'Earlier business model.',
+            useOfFunds: 'Earlier use of funds.',
+            claimsBoundary: 'Earlier claims boundary.',
+            deckReference: null,
+            demoReference: null,
+          },
+          {
+            id: 'narrative:test:draft',
+            legalEntityId: 'legal-entity:test',
+            ventureId: 'venture:test',
+            purpose: 'hackathon',
+            version: 1,
+            approvalState: 'draft',
+            contentSha256: 'c'.repeat(64),
+            approvedAt: null,
+            descriptions: {
+              words50: 'Draft hackathon narrative.',
+              words100: 'Draft hackathon narrative for a governed agent demo.',
+              words250: 'Draft hackathon narrative for a governed agent demo with founder review.',
+            },
+            problem: 'Hackathon judges need a concrete user outcome.',
+            productWedge: 'A governed agent completes one bounded task.',
+            whyNow: 'Agent tools are becoming composable.',
+            technicalDifferentiation: 'Selected context and proposal-only external actions.',
+            evidenceFraming: 'Show the exact trace and approval record.',
+            businessModel: 'Infrastructure and partner programs.',
+            useOfFunds: 'Demo production and partner delivery.',
+            claimsBoundary: 'Do not imply autonomous external authority.',
+            deckReference: null,
+            demoReference: null,
+          },
+        ],
+    canonicalDemos: firstRun
+      ? []
+      : [
+          {
+            id: 'demo:test',
+            name: 'Governed Agent Operator',
+            category: 'AI Agents / Developer Infrastructure',
+            status: 'active',
+            versions: [
+              {
+                id: 'demo-version:test:2',
+                demoId: 'demo:test',
+                version: 2,
+                baselineRepository: 'rndrntwrk/milaidy',
+                baselineCommitSha: 'd'.repeat(40),
+                branchConvention: 'hackathon/{event}/governed-agent',
+                expectedBaselineHours: 24,
+                coreAssets: ['bounded program envelope', 'approved MCP tools'],
+                evidenceRequirements: ['approval event', 'complete trace'],
+                approvedClaims: ['The demo shows a bounded agent using approved tools.'],
+                contentSha256: 'd'.repeat(64),
+                approvalState: 'approved',
+                approvedAt: '2026-07-31T19:00:00.000Z',
+              },
+              {
+                id: 'demo-version:test:draft',
+                demoId: 'demo:test',
+                version: 3,
+                baselineRepository: 'unbound',
+                baselineCommitSha: '0'.repeat(40),
+                branchConvention: 'hackathon/{event}/governed-agent',
+                expectedBaselineHours: 18,
+                coreAssets: ['bounded program envelope'],
+                evidenceRequirements: ['approval event'],
+                approvedClaims: ['Draft demo claim.'],
+                contentSha256: 'e'.repeat(64),
+                approvalState: 'draft',
+                approvedAt: null,
+              },
+            ],
+          },
+        ],
+    capitalMandates: firstRun
+      ? []
+      : [
+          {
+            id: 'capital-mandate:test',
+            roundId: 'round:test',
+            legalEntityId: 'legal-entity:test',
+            ventureId: 'venture:test',
+            narrativeProfileId: 'narrative:test:2',
+            stage: 'seed',
+            targetAmountUsd: 3_000_000,
+            minimumCheckUsd: 250_000,
+            maximumCheckUsd: 1_000_000,
+            instrument: 'SAFE',
+            tokenSideLetterPolicy: 'No token side letter is offered by default.',
+            geographies: ['United States'],
+            targetCloseDate: null,
+            status: 'active',
+            approvedUseOfFunds: 'Production hardening and design-partner delivery.',
+          },
+        ],
+    activeCapitalMandateId: firstRun ? null : 'capital-mandate:test',
   };
 }
 

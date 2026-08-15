@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import {
   Archive,
+  BookOpenText,
   Bot,
   CalendarDays,
   CheckSquare,
@@ -11,6 +12,7 @@ import {
   FolderKanban,
   Handshake,
   Inbox,
+  Landmark,
   ListFilter,
   Mail,
   Menu,
@@ -29,6 +31,7 @@ import { IconButton, StateDot, ToastRegion } from './ui';
 const primaryNavigation = [
   { to: '/', label: 'Up next', icon: Inbox },
   { to: '/round', label: 'Round overview', icon: CircleDollarSign },
+  { to: '/ventures', label: 'Ventures', icon: Landmark },
   { to: '/investors', label: 'Investors', icon: Users },
   { to: '/pipeline', label: 'Pipeline', icon: FolderKanban },
   { to: '/introductions', label: 'Introductions', icon: Handshake },
@@ -38,6 +41,7 @@ const primaryNavigation = [
 
 const knowledgeNavigation = [
   { to: '/knowledge', label: 'Knowledge', icon: FileText },
+  { to: '/narratives', label: 'Narratives & demos', icon: BookOpenText },
   { to: '/agent', label: 'Agent', icon: Bot },
   { to: '/review', label: 'Sources & review', icon: ShieldCheck },
   { to: '/lists', label: 'Lists', icon: ListFilter },
