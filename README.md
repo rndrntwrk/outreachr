@@ -109,6 +109,12 @@ Tests use isolated local vaults and mock mail/calendar providers; they never req
 
 Start with the [user guide](docs/user-guide.md), [testing guide](docs/testing.md), [privacy and threat model](docs/privacy-and-threat-model.md), or [release runbook](docs/release.md). Investor-data contributions are documented in [docs/data-contributions.md](docs/data-contributions.md).
 
+## RNDRNTWRK fork development
+
+RNDRNTWRK-specific development follows the [fork policy](docs/RNDRNTWRK_FORK_POLICY.md) and the [upstream synchronization procedure](docs/UPSTREAM_SYNC.md).
+
+Generic safety, accessibility, connector, test, and cross-platform fixes should remain suitable for upstream contribution. Ventures, Opportunity Atlas integration, Hackathon Studio, RNDRNTWRK CTRL adapters, and product taxonomy belong in isolated RNDRNTWRK modules. Contacts, warm paths, application answers, diligence, credentials, and vault backups remain private and must never enter the public repository.
+
 ## License and data rights
 
 First-party code and project-authored documentation are licensed under [Apache-2.0](LICENSE). Investor data retains source-specific rights recorded in its package manifest and is not automatically Apache-licensed. Portfolio records are selected research examples, not complete investment histories.
