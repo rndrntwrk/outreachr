@@ -1,0 +1,60 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "outreachr-public-dev",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-08-15",
+  "workers_dev": true,
+  "preview_urls": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.05
+  },
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "not_found_handling": "404-page"
+  },
+  "r2_buckets": [
+    {
+      "binding": "PUBLIC_ARTIFACTS",
+      "bucket_name": "outreachr-public-artifacts-dev"
+    }
+  ],
+  "vars": {
+    "ENVIRONMENT": "development",
+    "SERVICE_VERSION": "development"
+  },
+  "env": {
+    "staging": {
+      "name": "outreachr-public-staging",
+      "workers_dev": true,
+      "preview_urls": true,
+      "r2_buckets": [
+        {
+          "binding": "PUBLIC_ARTIFACTS",
+          "bucket_name": "outreachr-public-artifacts-staging"
+        }
+      ],
+      "vars": {
+        "ENVIRONMENT": "staging",
+        "SERVICE_VERSION": "staging-unversioned"
+      }
+    },
+    "production": {
+      "name": "outreachr-public",
+      "workers_dev": false,
+      "preview_urls": false,
+      "r2_buckets": [
+        {
+          "binding": "PUBLIC_ARTIFACTS",
+          "bucket_name": "outreachr-public-artifacts-prod"
+        }
+      ],
+      "vars": {
+        "ENVIRONMENT": "production",
+        "SERVICE_VERSION": "production-unversioned"
+      }
+    }
+  }
+}
