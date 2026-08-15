@@ -87,6 +87,21 @@ describe('hackathon eligibility evaluation', () => {
     expect(result.status).toBe('uncertain');
   });
 
+  it('does not let an optional rule bypass pending blocking evidence review', () => {
+    const result = evaluateHackathonEligibility(
+      { ...profile, isStudent: null },
+      [
+        rule(
+          'rule:student-pending',
+          'student_status',
+          { required: false },
+          { reviewState: 'pending', reviewedAt: null },
+        ),
+      ],
+    );
+    expect(result.status).toBe('uncertain');
+  });
+
   it('returns uncertain when a blocking company-age rule cannot be evaluated', () => {
     const result = evaluateHackathonEligibility(
       { ...profile, companyFoundedOn: null },
