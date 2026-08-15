@@ -13,6 +13,12 @@ import {
 
 export type { EligibilityProfileProvider };
 
+const REQUIRED_DISTRIBUTION_PHASES = [
+  'pre_event',
+  'submission_day',
+  'post_result',
+] as const;
+
 export class HackathonService extends HackathonServiceBase {
   override async saveBuild(input: HackathonBuildSaveInput): Promise<HackathonBuildSummary> {
     if (input.id) return super.saveBuild(input);
@@ -23,24 +29,37 @@ export class HackathonService extends HackathonServiceBase {
   override async saveDistribution(
     input: HackathonDistributionSaveInput,
   ): Promise<HackathonDistributionSummary> {
-    const existing = (await this.getEntry(input.entryId)).distributionPlan;
+    const detail = await this.getEntry(input.entryId);
+    const existing = detail.distributionPlan;
     if (input.id && existing && input.id !== existing.id) {
       throw new Error('A hackathon entry already has a different distribution plan.');
     }
-
-    const normalized = existing && !input.id ? { ...input, id: existing.id } : input;
     if (!existing) {
-      const draft = await super.saveDistribution({ ...normalized, status: 'draft' });
-      const identified = { ...normalized, id: draft.id };
-      if (input.status === 'draft') return draft;
-      if (input.status === 'cancelled') {
-        return super.saveDistribution({ ...identified, status: 'cancelled' });
+      if (input.status !== 'draft') {
+        throw new Error(
+          'A new distribution plan must start as a draft so its required items can be added.',
+        );
       }
-      const approved = await super.saveDistribution({ ...identified, status: 'approved' });
-      if (input.status === 'approved') return approved;
-      return super.saveDistribution(identified);
+      return super.saveDistribution(input);
     }
 
+    const normalized = input.id ? input : { ...input, id: existing.id };
+    if (
+      existing.status === 'draft' &&
+      ['approved', 'active', 'completed'].includes(input.status)
+    ) {
+      const phases = new Set(
+        detail.distributionItems
+          .filter((item) => item.status !== 'cancelled')
+          .map((item) => item.phase),
+      );
+      const missing = REQUIRED_DISTRIBUTION_PHASES.filter((phase) => !phases.has(phase));
+      if (missing.length) {
+        throw new Error(
+          `Distribution approval requires pre-event, submission-day and post-result items. Missing: ${missing.join(', ')}.`,
+        );
+      }
+    }
     if (existing.status === 'draft' && ['active', 'completed'].includes(input.status)) {
       await super.saveDistribution({ ...normalized, status: 'approved' });
     }
