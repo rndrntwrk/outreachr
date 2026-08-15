@@ -1,9 +1,12 @@
 import { HackathonRepository as ReviewedHackathonRepository } from './hackathon-repository-reviewed.js';
 import {
+  EntryTransitionSchema,
   HackathonCycleSchema,
   HackathonRuleSchema,
+  type EntryTransitionInput,
   type HackathonCycle,
   type HackathonCycleInput,
+  type HackathonEntrySummary,
   type HackathonRule,
   type HackathonRuleInput,
 } from './hackathon-validation-v11.js';
@@ -46,5 +49,26 @@ export class HackathonRepository extends ReviewedHackathonRepository {
       throw new Error('Use reviewRule to accept or reject hackathon rules');
     }
     return super.upsertRule(value);
+  }
+
+  override transitionEntry(input: EntryTransitionInput): HackathonEntrySummary {
+    const value = EntryTransitionSchema.parse(input);
+    if (value.toState === 'submission_ready') {
+      const unresolved = Number(
+        this.vault.scalar(
+          `SELECT COUNT(*) FROM hackathon_rules r
+           JOIN hackathon_entries e ON e.cycle_id=r.cycle_id
+           WHERE e.id=? AND r.blocking=1
+             AND (r.review_state!='accepted' OR r.confidence IN ('unknown','stale'))`,
+          [value.id],
+        ) ?? 0,
+      );
+      if (unresolved > 0) {
+        throw new Error(
+          'Hackathon entry is not submission ready: blocking rules require accepted, current evidence.',
+        );
+      }
+    }
+    return super.transitionEntry(value);
   }
 }
