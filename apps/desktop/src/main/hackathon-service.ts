@@ -59,38 +59,33 @@ interface HackathonServiceOptions {
   eligibilityProfileProvider?: EligibilityProfileProvider;
 }
 
-const TERMINAL_ENTRY_STATES = new Set([
-  'won',
-  'not_selected',
-  'withdrawn',
-  'converted',
-  'archived',
-]);
+const TERMINAL_STATES = new Set(['won', 'not_selected', 'withdrawn', 'converted', 'archived']);
 
 function splitTechnologies(value: string | null): string[] {
-  if (!value) return [];
   return value
-    .split(/[,;|]/u)
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
+    ? value
+        .split(/[,;|]/u)
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean)
+    : [];
 }
 
-function defaultEligibilityProfile(context: {
-  entry: CoreHackathonEntryDetail;
-  rules: readonly HackathonRule[];
-  evaluatedAt: string;
-}, repository: HackathonRepository): EligibilityProfile {
-  const cycle = repository.listCycles().find((item) => item.id === context.entry.cycleId);
+function defaultEligibilityProfile(
+  entry: CoreHackathonEntryDetail,
+  repository: HackathonRepository,
+  evaluatedAt: string,
+): EligibilityProfile {
+  const cycle = repository.listCycles().find((item) => item.id === entry.cycleId);
   const technologies = repository
-    .listBounties(context.entry.cycleId)
-    .filter((bounty) => context.entry.bountyIds.includes(bounty.id))
+    .listBounties(entry.cycleId)
+    .filter((bounty) => entry.bountyIds.includes(bounty.id))
     .flatMap((bounty) => splitTechnologies(bounty.requiredTechnology));
   const attendanceMode =
     cycle?.format === 'online' || cycle?.format === 'in_person' || cycle?.format === 'hybrid'
       ? cycle.format
       : 'unknown';
   return {
-    evaluatedAt: context.evaluatedAt,
+    evaluatedAt,
     country: null,
     founderAge: null,
     isStudent: null,
@@ -104,7 +99,7 @@ function defaultEligibilityProfile(context: {
     priorFundingUsd: null,
     participantIds: ['founder'],
     submissionLanguage: 'en',
-    availableArtifacts: context.entry.assets
+    availableArtifacts: entry.assets
       .filter((asset) => asset.status === 'ready' || asset.status === 'approved')
       .map((asset) => asset.kind),
   };
@@ -113,23 +108,48 @@ function defaultEligibilityProfile(context: {
 export class HackathonService {
   readonly #vault: VaultService;
   readonly #now: () => Date;
-  readonly #eligibilityProfileProvider: EligibilityProfileProvider | null;
+  readonly #profileProvider: EligibilityProfileProvider | null;
 
   constructor(options: HackathonServiceOptions) {
     this.#vault = options.vault;
     this.#now = options.now ?? (() => new Date());
-    this.#eligibilityProfileProvider = options.eligibilityProfileProvider ?? null;
+    this.#profileProvider = options.eligibilityProfileProvider ?? null;
   }
 
   #repository(): HackathonRepository {
     return new HackathonRepository(this.#vault.vault);
   }
 
+  #timestamp(): string {
+    return this.#now().toISOString();
+  }
+
+  #createdAt(table: string, idColumn: string, id: string, fallback: string): string {
+    const allowed = new Map([
+      ['hackathon_cycles:id', true],
+      ['hackathon_tracks:id', true],
+      ['hackathon_bounties:id', true],
+      ['hackathon_rules:id', true],
+      ['hackathon_distribution_items:id', true],
+    ]);
+    if (!allowed.has(`${table}:${idColumn}`)) throw new Error('Unsupported timestamp lookup');
+    const value = this.#vault.vault.scalar(
+      `SELECT created_at FROM ${table} WHERE ${idColumn}=?`,
+      [id],
+    );
+    return typeof value === 'string' ? value : fallback;
+  }
+
+  async #persist<T>(value: T): Promise<T> {
+    await this.#vault.persist();
+    return value;
+  }
+
   #readiness(detail: CoreHackathonEntryDetail): HackathonReadinessSummary {
     const repository = this.#repository();
     const cycle = repository.listCycles().find((item) => item.id === detail.cycleId);
     const currentRulesSha256 = cycle?.rulesSha256 ?? null;
-    const eligibility = currentRulesSha256
+    const evaluation = currentRulesSha256
       ? detail.eligibilityEvaluations.find(
           (item) => item.rulesSnapshotSha256 === currentRulesSha256,
         ) ?? null
@@ -157,11 +177,11 @@ export class HackathonService {
         ),
       ),
       currentRulesSha256,
-      eligibility: eligibility
+      eligibility: evaluation
         ? {
-            status: eligibility.status,
-            rulesSnapshotSha256: eligibility.rulesSnapshotSha256,
-            founderReviewState: eligibility.founderReviewState,
+            status: evaluation.status,
+            rulesSnapshotSha256: evaluation.rulesSnapshotSha256,
+            founderReviewState: evaluation.founderReviewState,
           }
         : null,
       pendingBlockingRules,
@@ -195,23 +215,26 @@ export class HackathonService {
     return { ...detail, readiness: this.#readiness(detail) };
   }
 
-  async bootstrap(): Promise<Pick<HackathonBootstrap, 'hackathonCycles' | 'hackathonEntries' | 'hackathonPortfolio'>> {
+  async bootstrap(): Promise<
+    Pick<HackathonBootstrap, 'hackathonCycles' | 'hackathonEntries' | 'hackathonPortfolio'>
+  > {
     const repository = this.#repository();
     const cycles = repository.listCycles();
     const entries = repository.listEntries();
     const details = entries.map((entry) => this.#detail(entry.id));
     const now = this.#now().valueOf();
-    const nextDeadlineAt = cycles
-      .map((cycle) => cycle.submissionDeadlineAt)
-      .filter((value): value is string => Boolean(value) && Date.parse(value) >= now)
-      .sort()[0] ?? null;
-    const metrics: HackathonPortfolioMetrics = {
+    const nextDeadlineAt =
+      cycles
+        .map((cycle) => cycle.submissionDeadlineAt)
+        .filter((value): value is string => value !== null && Date.parse(value) >= now)
+        .sort()[0] ?? null;
+    const hackathonPortfolio: HackathonPortfolioMetrics = {
       openUpcomingRollingCycles: cycles.filter((cycle) =>
         ['announced', 'registration', 'building', 'submission'].includes(cycle.state),
       ).length,
       candidateEntries: entries.filter((entry) => entry.state === 'candidate').length,
-      approvedActiveBuilds: details.filter((entry) =>
-        entry.build ? ['approved', 'active'].includes(entry.build.status) : false,
+      approvedActiveBuilds: details.filter(
+        (entry) => entry.build && ['approved', 'active'].includes(entry.build.status),
       ).length,
       submissionReadyEntries: entries.filter((entry) => entry.state === 'submission_ready').length,
       submittedEntries: entries.filter((entry) =>
@@ -222,7 +245,7 @@ export class HackathonService {
       nextDeadlineAt,
       blockedEntries: details.filter(
         (entry) =>
-          !TERMINAL_ENTRY_STATES.has(entry.state) && entry.readiness.blockingReasons.length > 0,
+          !TERMINAL_STATES.has(entry.state) && entry.readiness.blockingReasons.length > 0,
       ).length,
       estimatedActiveHours: entries
         .filter((entry) =>
@@ -230,121 +253,107 @@ export class HackathonService {
         )
         .reduce((sum, entry) => sum + entry.estimatedHours, 0),
     };
-    return {
-      hackathonCycles: cycles,
-      hackathonEntries: entries,
-      hackathonPortfolio: metrics,
-    };
+    return { hackathonCycles: cycles, hackathonEntries: entries, hackathonPortfolio };
   }
 
   async saveCycle(input: HackathonCycleSaveInput): Promise<HackathonCycleSummary> {
-    const now = this.#now().toISOString();
+    const now = this.#timestamp();
     const id = input.id ?? `hackathon-cycle:${randomUUID()}`;
-    const existing = this.#vault.vault.one<{ created_at: string }>(
-      'SELECT created_at FROM hackathon_cycles WHERE id=?',
-      [id],
+    return this.#persist(
+      this.#repository().upsertCycle({
+        ...input,
+        id,
+        createdAt: this.#createdAt('hackathon_cycles', 'id', id, now),
+        updatedAt: now,
+      }),
     );
-    const saved = this.#repository().upsertCycle({
-      ...input,
-      id,
-      createdAt: existing?.created_at ?? now,
-      updatedAt: now,
-    });
-    await this.#vault.persist();
-    return saved;
   }
 
   async saveTrack(input: HackathonTrackSaveInput): Promise<HackathonTrackSummary> {
-    const now = this.#now().toISOString();
+    const now = this.#timestamp();
     const id = input.id ?? `hackathon-track:${randomUUID()}`;
-    const existing = this.#vault.vault.one<{ created_at: string }>(
-      'SELECT created_at FROM hackathon_tracks WHERE id=?',
-      [id],
+    return this.#persist(
+      this.#repository().upsertTrack({
+        ...input,
+        id,
+        createdAt: this.#createdAt('hackathon_tracks', 'id', id, now),
+        updatedAt: now,
+      }),
     );
-    const saved = this.#repository().upsertTrack({
-      ...input,
-      id,
-      createdAt: existing?.created_at ?? now,
-      updatedAt: now,
-    });
-    await this.#vault.persist();
-    return saved;
   }
 
   async saveSponsor(input: HackathonSponsorSaveInput): Promise<HackathonSponsorSummary> {
-    const now = this.#now().toISOString();
-    const existing = this.#vault.vault.one<{ created_at: string }>(
+    const now = this.#timestamp();
+    const createdAt = this.#vault.vault.scalar(
       'SELECT created_at FROM hackathon_sponsors WHERE cycle_id=? AND organization_id=?',
       [input.cycleId, input.organizationId],
     );
-    const saved = this.#repository().upsertSponsor({
-      ...input,
-      createdAt: existing?.created_at ?? now,
-      updatedAt: now,
-    });
-    await this.#vault.persist();
-    return saved;
+    return this.#persist(
+      this.#repository().upsertSponsor({
+        ...input,
+        createdAt: typeof createdAt === 'string' ? createdAt : now,
+        updatedAt: now,
+      }),
+    );
   }
 
   async saveBounty(input: HackathonBountySaveInput): Promise<HackathonBountySummary> {
-    const now = this.#now().toISOString();
+    const now = this.#timestamp();
     const id = input.id ?? `hackathon-bounty:${randomUUID()}`;
-    const existing = this.#vault.vault.one<{ created_at: string }>(
-      'SELECT created_at FROM hackathon_bounties WHERE id=?',
-      [id],
+    return this.#persist(
+      this.#repository().upsertBounty({
+        ...input,
+        id,
+        createdAt: this.#createdAt('hackathon_bounties', 'id', id, now),
+        updatedAt: now,
+      }),
     );
-    const saved = this.#repository().upsertBounty({
-      ...input,
-      id,
-      createdAt: existing?.created_at ?? now,
-      updatedAt: now,
-    });
-    await this.#vault.persist();
-    return saved;
   }
 
   async saveRule(input: HackathonRuleSaveInput): Promise<HackathonRuleSummary> {
-    const now = this.#now().toISOString();
+    const now = this.#timestamp();
     const id = input.id ?? `hackathon-rule:${randomUUID()}`;
-    const existing = this.#vault.vault.one<{ created_at: string }>(
-      'SELECT created_at FROM hackathon_rules WHERE id=?',
-      [id],
+    return this.#persist(
+      this.#repository().upsertRule({
+        ...input,
+        id,
+        reviewState: 'pending',
+        reviewedAt: null,
+        createdAt: this.#createdAt('hackathon_rules', 'id', id, now),
+        updatedAt: now,
+      }),
     );
-    const saved = this.#repository().upsertRule({
-      ...input,
-      id,
-      reviewState: 'pending',
-      reviewedAt: null,
-      createdAt: existing?.created_at ?? now,
-      updatedAt: now,
-    });
-    await this.#vault.persist();
-    return saved;
   }
 
   async reviewRule(id: string, decision: 'accept' | 'reject'): Promise<HackathonRuleSummary> {
-    const saved = this.#repository().reviewRule(
-      id,
-      decision === 'accept' ? 'accepted' : 'rejected',
-      this.#now().toISOString(),
+    return this.#persist(
+      this.#repository().reviewRule(
+        id,
+        decision === 'accept' ? 'accepted' : 'rejected',
+        this.#timestamp(),
+      ),
     );
-    await this.#vault.persist();
-    return saved;
   }
 
   async createEntry(input: HackathonEntryCreateCommand): Promise<HackathonEntrySummary> {
     const authority = new VentureRepository(this.#vault.vault);
     const legalEntity = authority.listLegalEntities().find((item) => item.id === input.legalEntityId);
     if (!legalEntity) throw new Error('Selected hackathon legal entity does not exist');
-    const leadVenture = authority.listVentures().find((item) => item.id === input.leadVentureId);
-    if (!leadVenture || leadVenture.legalEntityId !== input.legalEntityId) {
+    const ventures = authority.listVentures();
+    const lead = ventures.find((item) => item.id === input.leadVentureId);
+    if (!lead || lead.legalEntityId !== input.legalEntityId) {
       throw new Error('Lead venture must belong to the selected legal entity');
     }
-    const supporting = authority
-      .listVentures()
-      .filter((item) => input.supportingVentureIds.includes(item.id));
-    if (supporting.length !== new Set(input.supportingVentureIds).size) {
-      throw new Error('Every supporting venture must exist');
+    const supportingIds = new Set(input.supportingVentureIds);
+    if (supportingIds.size !== input.supportingVentureIds.length || supportingIds.has(lead.id)) {
+      throw new Error('Supporting ventures must be unique and cannot repeat the lead venture');
+    }
+    const supporting = ventures.filter((item) => supportingIds.has(item.id));
+    if (
+      supporting.length !== supportingIds.size ||
+      supporting.some((item) => item.legalEntityId !== input.legalEntityId)
+    ) {
+      throw new Error('Every supporting venture must exist under the selected legal entity');
     }
     const narrative = authority
       .listNarrativeProfiles(input.leadVentureId)
@@ -357,19 +366,28 @@ export class HackathonService {
     ) {
       throw new Error('Entry requires an approved hackathon narrative for its authority');
     }
-    const demoVersion = authority
+    const demo = authority
       .listCanonicalDemos()
-      .flatMap((demo) => demo.versions)
-      .find((version) => version.id === input.canonicalDemoVersionId);
-    if (!demoVersion || demoVersion.approvalState !== 'approved') {
+      .flatMap((item) => item.versions)
+      .find((item) => item.id === input.canonicalDemoVersionId);
+    if (!demo || demo.approvalState !== 'approved') {
       throw new Error('Entry requires an approved canonical demo version');
     }
 
-    const now = this.#now().toISOString();
-    const id = input.id ?? `hackathon-entry:${randomUUID()}`;
     const repository = this.#repository();
-    const created = this.#vault.vault.transaction(() => {
-      const entry = repository.createEntry({
+    const trackIds = new Set(repository.listTracks(input.cycleId).map((item) => item.id));
+    if (input.trackIds.some((id) => !trackIds.has(id))) {
+      throw new Error('Every selected track must belong to the hackathon cycle');
+    }
+    const bountyIds = new Set(repository.listBounties(input.cycleId).map((item) => item.id));
+    if (input.bountyIds.some((id) => !bountyIds.has(id))) {
+      throw new Error('Every selected bounty must belong to the hackathon cycle');
+    }
+
+    const now = this.#timestamp();
+    const id = input.id ?? `hackathon-entry:${randomUUID()}`;
+    const summary = this.#vault.vault.transaction(() => {
+      repository.createEntry({
         id,
         cycleId: input.cycleId,
         legalEntityId: input.legalEntityId,
@@ -393,21 +411,21 @@ export class HackathonService {
         updatedAt: now,
       });
       repository.replaceEntryVentures(id, [
-        { entryId: id, ventureId: input.leadVentureId, role: 'lead', createdAt: now },
-        ...input.supportingVentureIds.map((ventureId) => ({
+        { entryId: id, ventureId: lead.id, role: 'lead', createdAt: now },
+        ...supporting.map((item) => ({
           entryId: id,
-          ventureId,
+          ventureId: item.id,
           role: 'supporting' as const,
           createdAt: now,
         })),
       ]);
       repository.replaceEntryTracks(id, input.trackIds, now);
       repository.replaceEntryBounties(id, input.bountyIds, now);
-      return repository.getEntry(entry.id)!;
+      const entry = repository.listEntries({ cycleId: input.cycleId }).find((item) => item.id === id);
+      if (!entry) throw new Error('Hackathon entry was not persisted');
+      return entry;
     });
-    await this.#vault.persist();
-    const { readiness: _readiness, ...summary } = this.#detail(created.id);
-    return summary;
+    return this.#persist(summary);
   }
 
   async scoreEntry(id: string): Promise<{ id: string; weightedScore: number }> {
@@ -428,34 +446,33 @@ export class HackathonService {
         reusePercentage: entry.reusePercentage,
         estimatedHours: entry.estimatedHours,
         deadline: cycle?.submissionDeadlineAt ?? null,
-        evaluatedAt: this.#now().toISOString(),
+        evaluatedAt: this.#timestamp(),
       }),
     };
   }
 
   async evaluateEligibility(id: string): Promise<HackathonEligibilitySummary> {
     const repository = this.#repository();
-    const detail = repository.getEntry(id);
-    if (!detail) throw new Error(`Hackathon entry ${id} does not exist`);
-    const rules = repository.listRules(detail.cycleId);
-    const evaluatedAt = this.#now().toISOString();
-    const context = { entry: detail, rules, evaluatedAt };
-    const profile = this.#eligibilityProfileProvider
-      ? await this.#eligibilityProfileProvider(context)
-      : defaultEligibilityProfile(context, repository);
+    const entry = repository.getEntry(id);
+    if (!entry) throw new Error(`Hackathon entry ${id} does not exist`);
+    const rules = repository.listRules(entry.cycleId);
+    const evaluatedAt = this.#timestamp();
+    const profile = this.#profileProvider
+      ? await this.#profileProvider({ entry, rules, evaluatedAt })
+      : defaultEligibilityProfile(entry, repository, evaluatedAt);
     const result = evaluateHackathonEligibility({ ...profile, evaluatedAt }, rules);
-    const saved = repository.saveEligibilityEvaluation({
-      id: `hackathon-eligibility:${randomUUID()}`,
-      entryId: id,
-      status: result.status,
-      evaluatedAt,
-      rulesSnapshotSha256: result.rulesSnapshotSha256,
-      detail: result.details.map((item) => ({ ...item })),
-      founderReviewState: 'pending',
-      reviewedAt: null,
-    });
-    await this.#vault.persist();
-    return saved;
+    return this.#persist(
+      repository.saveEligibilityEvaluation({
+        id: `hackathon-eligibility:${randomUUID()}`,
+        entryId: id,
+        status: result.status,
+        evaluatedAt,
+        rulesSnapshotSha256: result.rulesSnapshotSha256,
+        detail: result.details.map((item) => ({ ...item })),
+        founderReviewState: 'pending',
+        reviewedAt: null,
+      }),
+    );
   }
 
   async reviewEligibility(
@@ -469,169 +486,162 @@ export class HackathonService {
       .find((item) => item.eligibilityEvaluations.some((evaluation) => evaluation.id === id));
     const current = entry?.eligibilityEvaluations.find((evaluation) => evaluation.id === id);
     if (!current) throw new Error('Hackathon eligibility evaluation does not exist');
-    const reviewedAt = this.#now().toISOString();
-    const saved = repository.saveEligibilityEvaluation({
-      ...current,
-      founderReviewState: decision === 'accept' ? 'accepted' : 'rejected',
-      reviewedAt,
-    });
-    await this.#vault.persist();
-    return saved;
+    const reviewedAt = this.#timestamp();
+    return this.#persist(
+      repository.saveEligibilityEvaluation({
+        ...current,
+        founderReviewState: decision === 'accept' ? 'accepted' : 'rejected',
+        reviewedAt,
+      }),
+    );
   }
 
   async decideEntry(input: HackathonEntryDecisionCommand): Promise<HackathonEntrySummary> {
-    const saved = this.#repository().decideEntry({
-      id: input.id,
-      decision: input.decision,
-      rationale: input.rationale,
-      decidedAt: this.#now().toISOString(),
-    });
-    await this.#vault.persist();
-    return saved;
+    return this.#persist(
+      this.#repository().decideEntry({ ...input, decidedAt: this.#timestamp() }),
+    );
   }
 
   async transitionEntry(input: HackathonEntryTransitionCommand): Promise<HackathonEntrySummary> {
-    const saved = this.#repository().transitionEntry({
-      id: input.id,
-      toState: input.toState,
-      transitionedAt: this.#now().toISOString(),
-    });
-    await this.#vault.persist();
-    return saved;
+    return this.#persist(
+      this.#repository().transitionEntry({ ...input, transitionedAt: this.#timestamp() }),
+    );
   }
 
   async saveBuild(input: HackathonBuildSaveInput): Promise<HackathonBuildSummary> {
-    const now = this.#now().toISOString();
+    const repository = this.#repository();
+    const now = this.#timestamp();
     const id = input.id ?? `hackathon-build:${randomUUID()}`;
-    const detail = this.#repository().getEntry(input.entryId);
-    const existing = detail?.build?.id === id ? detail.build : null;
+    const existing = repository.getEntry(input.entryId)?.build;
+    const current = existing?.id === id ? existing : null;
     const requiresApproval = ['approved', 'active', 'completed'].includes(input.status);
-    const saved = this.#repository().saveBuild({
-      ...input,
-      id,
-      approvedBy: requiresApproval ? (existing?.approvedBy ?? 'founder') : (existing?.approvedBy ?? null),
-      approvedAt: requiresApproval ? (existing?.approvedAt ?? now) : (existing?.approvedAt ?? null),
-      createdAt: existing?.createdAt ?? now,
-      updatedAt: now,
-    });
-    await this.#vault.persist();
-    return saved;
+    return this.#persist(
+      repository.saveBuild({
+        ...input,
+        id,
+        approvedBy: requiresApproval ? (current?.approvedBy ?? 'founder') : (current?.approvedBy ?? null),
+        approvedAt: requiresApproval ? (current?.approvedAt ?? now) : (current?.approvedAt ?? null),
+        createdAt: current?.createdAt ?? now,
+        updatedAt: now,
+      }),
+    );
   }
 
   async saveAsset(input: HackathonAssetSaveInput): Promise<HackathonAssetSummary> {
-    const now = this.#now().toISOString();
-    const id = input.id ?? `hackathon-asset:${randomUUID()}`;
-    const existing = this.#repository().getEntry(input.entryId)?.assets.find((item) => item.id === id);
     if (input.status === 'approved' && input.reviewDecision !== 'accept') {
       throw new Error('Approved hackathon assets require an explicit founder acceptance');
     }
-    const reviewState =
+    const repository = this.#repository();
+    const now = this.#timestamp();
+    const id = input.id ?? `hackathon-asset:${randomUUID()}`;
+    const existing = repository.getEntry(input.entryId)?.assets.find((item) => item.id === id);
+    const founderReviewState =
       input.reviewDecision === 'accept'
         ? 'accepted'
         : input.reviewDecision === 'reject'
           ? 'rejected'
           : 'pending';
-    const saved = this.#repository().saveAsset({
-      id,
-      entryId: input.entryId,
-      kind: input.kind,
-      required: input.required,
-      status: input.reviewDecision === 'reject' ? 'rejected' : input.status,
-      reference: input.reference,
-      contentSha256: input.contentSha256,
-      founderReviewState: reviewState,
-      reviewedAt: reviewState === 'pending' ? null : now,
-      createdAt: existing?.createdAt ?? now,
-      updatedAt: now,
-    });
-    await this.#vault.persist();
-    return saved;
+    return this.#persist(
+      repository.saveAsset({
+        id,
+        entryId: input.entryId,
+        kind: input.kind,
+        required: input.required,
+        status: input.reviewDecision === 'reject' ? 'rejected' : input.status,
+        reference: input.reference,
+        contentSha256: input.contentSha256,
+        founderReviewState,
+        reviewedAt: founderReviewState === 'pending' ? null : now,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      }),
+    );
   }
 
   async saveDistribution(
     input: HackathonDistributionSaveInput,
   ): Promise<HackathonDistributionSummary> {
-    const now = this.#now().toISOString();
+    const repository = this.#repository();
+    const now = this.#timestamp();
     const id = input.id ?? `hackathon-distribution:${input.entryId}`;
-    const existing = this.#repository().getEntry(input.entryId)?.distributionPlan;
+    const existing = repository.getEntry(input.entryId)?.distributionPlan;
     const requiresApproval = ['approved', 'active', 'completed'].includes(input.status);
-    const saved = this.#repository().saveDistributionPlan({
-      ...input,
-      id,
-      approvedBy: requiresApproval ? (existing?.approvedBy ?? 'founder') : (existing?.approvedBy ?? null),
-      approvedAt: requiresApproval ? (existing?.approvedAt ?? now) : (existing?.approvedAt ?? null),
-      createdAt: existing?.createdAt ?? now,
-      updatedAt: now,
-    });
-    await this.#vault.persist();
-    return saved;
+    return this.#persist(
+      repository.saveDistributionPlan({
+        ...input,
+        id,
+        approvedBy: requiresApproval ? (existing?.approvedBy ?? 'founder') : (existing?.approvedBy ?? null),
+        approvedAt: requiresApproval ? (existing?.approvedAt ?? now) : (existing?.approvedAt ?? null),
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      }),
+    );
   }
 
   async saveDistributionItem(
     input: HackathonDistributionItemSaveInput,
   ): Promise<HackathonDistributionItemSummary> {
-    const now = this.#now().toISOString();
+    const now = this.#timestamp();
     const id = input.id ?? `hackathon-distribution-item:${randomUUID()}`;
-    const existing = this.#vault.vault.one<{ created_at: string }>(
-      'SELECT created_at FROM hackathon_distribution_items WHERE id=?',
-      [id],
+    return this.#persist(
+      this.#repository().saveDistributionItem({
+        ...input,
+        id,
+        createdAt: this.#createdAt('hackathon_distribution_items', 'id', id, now),
+        updatedAt: now,
+      }),
     );
-    const saved = this.#repository().saveDistributionItem({
-      ...input,
-      id,
-      createdAt: existing?.created_at ?? now,
-      updatedAt: now,
-    });
-    await this.#vault.persist();
-    return saved;
   }
 
   async saveSubmission(input: HackathonSubmissionSaveInput): Promise<HackathonSubmissionSummary> {
-    const now = this.#now().toISOString();
+    const repository = this.#repository();
+    const now = this.#timestamp();
     const id = input.id ?? `hackathon-submission:${input.entryId}`;
-    const existing = this.#repository().getEntry(input.entryId)?.submission;
-    const saved = this.#repository().saveSubmission({
-      ...input,
-      id,
-      submittedAt: input.submittedAt ?? now,
-      createdAt: existing?.createdAt ?? now,
-      updatedAt: now,
-    });
-    await this.#vault.persist();
-    return saved;
+    const existing = repository.getEntry(input.entryId)?.submission;
+    return this.#persist(
+      repository.saveSubmission({
+        ...input,
+        id,
+        submittedAt: input.submittedAt ?? now,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      }),
+    );
   }
 
   async saveResult(input: HackathonResultSaveInput): Promise<HackathonResultSummary> {
-    const now = this.#now().toISOString();
+    const repository = this.#repository();
+    const now = this.#timestamp();
     const id = input.id ?? `hackathon-result:${input.entryId}`;
-    const existing = this.#repository().getEntry(input.entryId)?.result;
-    const saved = this.#repository().saveResult({
-      ...input,
-      id,
-      recordedAt: input.recordedAt ?? now,
-      createdAt: existing?.createdAt ?? now,
-      updatedAt: now,
-    });
-    await this.#vault.persist();
-    return saved;
+    const existing = repository.getEntry(input.entryId)?.result;
+    return this.#persist(
+      repository.saveResult({
+        ...input,
+        id,
+        recordedAt: input.recordedAt ?? now,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      }),
+    );
   }
 
   async saveConversion(
     input: HackathonConversionSaveInput,
   ): Promise<HackathonConversionSummary> {
-    const now = this.#now().toISOString();
+    const repository = this.#repository();
+    const now = this.#timestamp();
     const id = input.id ?? `hackathon-conversion:${randomUUID()}`;
-    const existing = this.#repository()
+    const existing = repository
       .getEntry(input.entryId)
       ?.conversions.find((item) => item.id === id);
-    const saved = this.#repository().saveConversion({
-      ...input,
-      id,
-      createdAt: existing?.createdAt ?? now,
-      updatedAt: now,
-    });
-    await this.#vault.persist();
-    return saved;
+    return this.#persist(
+      repository.saveConversion({
+        ...input,
+        id,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      }),
+    );
   }
 
   async getEntry(id: string): Promise<HackathonEntryDetail> {
