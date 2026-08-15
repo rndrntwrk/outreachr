@@ -44,7 +44,10 @@ const NullableUrlSchema = UrlSchema.nullable().default(null);
 const NullableTextSchema = z.string().max(100_000).nullable().default(null);
 const RequiredTextSchema = z.string().trim().min(1).max(100_000);
 const RequiredLongTextSchema = z.string().trim().min(1).max(1_000_000);
-const StringListSchema = z.array(z.string().trim().min(1).max(10_000)).max(1_000);
+const StringListSchema = z
+  .array(z.string().trim().min(1).max(10_000))
+  .min(1)
+  .max(1_000);
 
 export const LegalEntitySchema = z.object({
   id: IdSchema,
@@ -216,7 +219,7 @@ export const CanonicalDemoVersionSchema = z
       });
     }
   });
-export type CanonicalDemoVersionInput = z.input<typeof CanonicalDemoVersionSchema>;
+export type CanonicalDemoVersionRecordInput = z.input<typeof CanonicalDemoVersionSchema>;
 export type CanonicalDemoVersion = z.output<typeof CanonicalDemoVersionSchema>;
 
 export const CanonicalDemoVersionCreateSchema = z.object({
@@ -232,9 +235,8 @@ export const CanonicalDemoVersionCreateSchema = z.object({
   createdAt: IsoDateTimeSchema,
   updatedAt: IsoDateTimeSchema,
 });
-export type CanonicalDemoVersionCreateInput = z.input<
-  typeof CanonicalDemoVersionCreateSchema
->;
+export type CanonicalDemoVersionInput = z.input<typeof CanonicalDemoVersionCreateSchema>;
+export type CanonicalDemoVersionCreateInput = CanonicalDemoVersionInput;
 
 export const CapitalMandateSchema = z
   .object({
@@ -277,7 +279,9 @@ export interface CanonicalDemoWithVersions extends CanonicalDemo {
 }
 
 export function narrativeDigest(input: NarrativeContent): string {
-  return createHash('sha256').update(stableJson(NarrativeContentSchema.parse(input)), 'utf8').digest('hex');
+  return createHash('sha256')
+    .update(stableJson(NarrativeContentSchema.parse(input)), 'utf8')
+    .digest('hex');
 }
 
 export function canonicalDemoDigest(input: CanonicalDemoContent): string {
