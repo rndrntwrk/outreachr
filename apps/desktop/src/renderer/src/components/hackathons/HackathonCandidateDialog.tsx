@@ -91,8 +91,10 @@ function NumberField({
       type="number"
       min={minimum}
       max={maximum}
-      value={value}
-      onChange={(event) => onChange(Number(event.target.value))}
+      value={Number.isFinite(value) ? value : ''}
+      onChange={(event) =>
+        onChange(event.target.value === '' ? Number.NaN : Number(event.target.value))
+      }
     />
   );
 }
@@ -149,6 +151,20 @@ export function HackathonCandidateDialog({
 
   if (!open) return null;
 
+  const ratingValues = [
+    draft.strategicFit,
+    draft.acceptanceProbability,
+    draft.capitalUpside,
+    draft.distributionUpside,
+    draft.technicalLeverage,
+    draft.credibility,
+    draft.urgency,
+    draft.effortEfficiency,
+    draft.lockInSafety,
+  ];
+  const ratingsValid = ratingValues.every(
+    (value) => Number.isFinite(value) && value >= 1 && value <= 10,
+  );
   const valid =
     draft.cycleId.length > 0 &&
     draft.legalEntityId.length > 0 &&
@@ -158,9 +174,13 @@ export function HackathonCandidateDialog({
     draft.submissionConcept.trim().length > 0 &&
     draft.userOutcome.trim().length > 0 &&
     draft.ecosystemAdapter.trim().length > 0 &&
-    draft.estimatedHours > 0 &&
+    Number.isFinite(draft.estimatedHours) &&
+    draft.estimatedHours >= 1 &&
+    draft.estimatedHours <= 1_000 &&
+    Number.isFinite(draft.reusePercentage) &&
     draft.reusePercentage >= 0 &&
-    draft.reusePercentage <= 100;
+    draft.reusePercentage <= 100 &&
+    ratingsValid;
 
   const createCandidate = async (): Promise<void> => {
     if (!valid) return;
