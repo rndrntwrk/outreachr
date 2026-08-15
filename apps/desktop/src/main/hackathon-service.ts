@@ -3,6 +3,8 @@ import type {
   HackathonBuildSummary,
   HackathonDistributionSaveInput,
   HackathonDistributionSummary,
+  HackathonSubmissionSaveInput,
+  HackathonSubmissionSummary,
 } from '../shared/hackathon-contracts';
 import {
   HackathonService as HackathonServiceBase,
@@ -43,5 +45,18 @@ export class HackathonService extends HackathonServiceBase {
       await super.saveDistribution({ ...normalized, status: 'approved' });
     }
     return super.saveDistribution(normalized);
+  }
+
+  override async saveSubmission(
+    input: HackathonSubmissionSaveInput,
+  ): Promise<HackathonSubmissionSummary> {
+    const detail = await this.getEntry(input.entryId);
+    if (!detail.build?.currentCommitSha) {
+      throw new Error('A submission requires a verified current build commit.');
+    }
+    if (detail.build.currentCommitSha !== input.repositoryCommitSha) {
+      throw new Error('Submission commit must match the current verified build commit.');
+    }
+    return super.saveSubmission(input);
   }
 }
