@@ -56,6 +56,11 @@ function deadlineMatches(deadline: string | null, window: string): boolean {
   return Number.isFinite(hours) && remaining <= hours * 60 * 60 * 1_000;
 }
 
+function ventureMatches(leadVentureId: string | null, filter: string): boolean {
+  if (!filter) return true;
+  return filter === 'unknown' ? leadVentureId === null : leadVentureId === filter;
+}
+
 function entryGroups(entries: readonly HackathonEntrySummary[]) {
   return {
     decisions: entries.filter(
@@ -210,7 +215,7 @@ export function HackathonStudioPage(): React.JSX.Element {
         const eligibility = entry.eligibilityStatus ?? 'unknown';
         return (
           (!filters.opportunityStatus || opportunity?.status === filters.opportunityStatus) &&
-          (!filters.ventureId || entry.leadVentureId === filters.ventureId) &&
+          ventureMatches(entry.leadVentureId, filters.ventureId) &&
           (!filters.demoVersionId || entry.canonicalDemoVersionId === filters.demoVersionId) &&
           (!filters.organizerId ||
             (opportunity?.organizerOrganizationId ?? 'unknown') === filters.organizerId) &&
