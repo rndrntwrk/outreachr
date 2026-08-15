@@ -117,7 +117,7 @@ describe('founder review boundaries', () => {
       resultAt: '2026-09-10T00:00:00.000Z',
       format: 'online' as const,
       location: null,
-      state: 'open' as const,
+      state: 'registration' as const,
       rulesSourceId: 'source:rules',
       rulesRetrievedAt: NOW,
       rulesSha256: null,
