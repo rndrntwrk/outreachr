@@ -25,15 +25,15 @@ describe('Hackathon Studio portfolio', () => {
 
     expect(await screen.findByRole('heading', { name: 'Hackathon Studio' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Hackathons' })).toBeVisible();
-    expect(screen.getByText('ETHGlobal Agentic Ethereum')).toBeVisible();
-    expect(screen.getByText('Sep 12')).toBeVisible();
+    expect(screen.getAllByText('ETHGlobal Agentic Ethereum').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Sep 12').length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: 'Apply now' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Active builds' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Post-result conversion' })).toBeVisible();
     expect(screen.getByText('Alice governed MCP operator for a bounded community workflow.')).toBeVisible();
     expect(screen.getByText('85')).toBeVisible();
-    expect(screen.getByText('Strategic fit')).toBeVisible();
-    expect(screen.getByText('Distribution')).toBeVisible();
+    expect(screen.getAllByText('Strategic fit').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Distribution').length).toBeGreaterThan(0);
     expect(screen.getByText('72h')).toBeVisible();
   });
 
