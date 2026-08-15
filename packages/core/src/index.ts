@@ -1,4 +1,5 @@
 export * from './backup.js';
+export * from './canonical-demo-seed.js';
 export * from './contribution.js';
 export * from './database.js';
 export * from './migrations.js';
