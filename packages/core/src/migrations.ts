@@ -149,6 +149,24 @@ CREATE INDEX capital_mandates_status_close_idx ON capital_mandates(status,target
 CREATE UNIQUE INDEX venture_demos_one_primary_idx
   ON venture_demos(venture_id) WHERE is_primary=1;
 
+CREATE TRIGGER narrative_profile_authority_insert
+BEFORE INSERT ON narrative_profiles
+BEGIN
+  SELECT CASE WHEN NOT EXISTS (
+    SELECT 1 FROM ventures v
+    WHERE v.id=NEW.venture_id AND v.legal_entity_id=NEW.legal_entity_id
+  ) THEN RAISE(ABORT,'narrative profile authority mismatch') END;
+END;
+
+CREATE TRIGGER narrative_profile_authority_update
+BEFORE UPDATE OF venture_id,legal_entity_id ON narrative_profiles
+BEGIN
+  SELECT CASE WHEN NOT EXISTS (
+    SELECT 1 FROM ventures v
+    WHERE v.id=NEW.venture_id AND v.legal_entity_id=NEW.legal_entity_id
+  ) THEN RAISE(ABORT,'narrative profile authority mismatch') END;
+END;
+
 CREATE TRIGGER approved_narrative_content_is_immutable
 BEFORE UPDATE OF description_50,description_100,description_250,problem,product_wedge,why_now,
   technical_differentiation,evidence_framing,business_model,use_of_funds,claims_boundary,
