@@ -1,8 +1,10 @@
 import type {
   FounderAppBootstrap,
+  FounderBootstrapCommandName,
   FounderCommandMap,
   FounderCommandName,
   FounderCommandResult,
+  FounderCommandResultMap,
 } from './venture-contracts';
 
 export type OrganizationKind =
@@ -14,6 +16,7 @@ export type OrganizationKind =
   | 'government'
   | 'investor'
   | 'other';
+export type OrganizationOrigin = 'local' | 'atlas' | 'import' | 'contribution';
 export type OpportunityType =
   | 'investor'
   | 'accelerator'
@@ -55,9 +58,12 @@ export type HackathonEntryState =
   | 'submission_ready'
   | 'submitted'
   | 'judging'
-  | 'completed'
+  | 'finalist'
+  | 'won'
+  | 'not_selected'
   | 'withdrawn'
-  | 'rejected';
+  | 'converted'
+  | 'archived';
 export type HackathonFounderDecision = 'pending' | 'go' | 'conditional_go' | 'no_go';
 export type HackathonEligibilityStatus = 'eligible' | 'ineligible' | 'uncertain';
 export type HackathonRuleType =
@@ -67,18 +73,43 @@ export type HackathonRuleType =
   | 'company_age'
   | 'existing_code'
   | 'team_size'
+  | 'intellectual_property'
   | 'open_source'
   | 'required_technology'
   | 'attendance'
-  | 'funding_limit'
+  | 'prior_funding'
+  | 'prohibited_participant'
   | 'submission_language'
-  | 'prior_participation'
   | 'required_artifact'
   | 'other';
 export type HackathonBuildStatus = 'draft' | 'approved' | 'active' | 'completed' | 'cancelled';
-export type HackathonAssetStatus = 'missing' | 'draft' | 'ready' | 'approved';
+export type HackathonCiState = 'not_run' | 'running' | 'passed' | 'failed' | 'blocked';
+export type SecurityReviewState = 'pending' | 'passed' | 'failed' | 'not_required';
+export type MergeDecision = 'pending' | 'merge' | 'do_not_merge' | 'superseded';
+export type HackathonAssetStatus = 'missing' | 'draft' | 'ready' | 'approved' | 'rejected';
 export type DistributionPlanStatus = 'draft' | 'approved' | 'active' | 'completed' | 'cancelled';
-export type DistributionPhase = 'pre_event' | 'build_period' | 'submission_day' | 'judging' | 'post_result';
+export type DistributionPhase = 'pre_event' | 'submission_day' | 'post_result';
+export type DistributionItemStatus = 'planned' | 'ready' | 'published' | 'cancelled';
+export type HackathonSubmissionStatus = 'submitted' | 'accepted' | 'rejected' | 'withdrawn';
+export type HackathonResultOutcome =
+  | 'finalist'
+  | 'won'
+  | 'not_selected'
+  | 'withdrawn'
+  | 'cancelled'
+  | 'other';
+export type HackathonConversionKind =
+  | 'grant'
+  | 'accelerator'
+  | 'pilot'
+  | 'investor_meeting'
+  | 'sponsor_relationship'
+  | 'partner_integration'
+  | 'user_growth'
+  | 'media_coverage'
+  | 'reusable_demo'
+  | 'other';
+export type HackathonConversionStatus = 'identified' | 'active' | 'won' | 'lost' | 'completed';
 
 export interface OrganizationSummary {
   id: string;
@@ -90,7 +121,7 @@ export interface OrganizationSummary {
   linkedFirmId: string | null;
   isPublic: boolean;
   contributionEligible: boolean;
-  origin: 'local' | 'atlas' | 'import' | 'contribution';
+  origin: OrganizationOrigin;
 }
 
 export interface OpportunitySummary {
@@ -130,7 +161,7 @@ export interface HackathonTrackSummary {
   cycleId: string;
   name: string;
   goals: string | null;
-  judgingCriteria: unknown[];
+  judgingCriteria: string[];
 }
 
 export interface HackathonSponsorSummary {
@@ -240,10 +271,10 @@ export interface HackathonBuildSummary {
   startConditions: string;
   stopConditions: string;
   currentCommitSha: string | null;
-  ciState: 'pending' | 'passed' | 'failed' | 'not_required';
-  securityReviewState: 'pending' | 'passed' | 'failed' | 'not_required';
+  ciState: HackathonCiState;
+  securityReviewState: SecurityReviewState;
   evidenceManifestSha256: string | null;
-  mergeDecision: 'pending' | 'approved' | 'rejected' | 'not_applicable';
+  mergeDecision: MergeDecision;
   approvedBy: string | null;
   approvedAt: string | null;
   startedAt: string | null;
@@ -277,7 +308,7 @@ export interface DistributionItemSummary {
   planId: string;
   kind: string;
   phase: DistributionPhase;
-  status: 'planned' | 'ready' | 'published' | 'completed' | 'cancelled';
+  status: DistributionItemStatus;
   title: string;
   scheduledAt: string | null;
   completedAt: string | null;
@@ -294,13 +325,13 @@ export interface HackathonSubmissionSummary {
   repositoryCommitSha: string;
   receiptAssetId: string;
   contentSha256: string;
-  status: 'submitted' | 'withdrawn' | 'disqualified';
+  status: HackathonSubmissionStatus;
 }
 
 export interface HackathonResultSummary {
   id: string;
   entryId: string;
-  outcome: string;
+  outcome: HackathonResultOutcome;
   placement: string | null;
   prizeValue: number | null;
   prizeAsset: string | null;
@@ -312,13 +343,13 @@ export interface HackathonResultSummary {
 export interface HackathonConversionSummary {
   id: string;
   entryId: string;
-  kind: string;
+  kind: HackathonConversionKind;
   organizationId: string | null;
   organizationName: string | null;
   title: string;
   detail: string | null;
   valueUsd: number | null;
-  status: string;
+  status: HackathonConversionStatus;
   referenceUrl: string | null;
   occurredAt: string | null;
 }
@@ -549,9 +580,17 @@ export interface HackathonCommandResultMap {
 
 export type CompleteFounderCommandMap = FounderCommandMap & HackathonCommandMap;
 export type CompleteFounderCommandName = keyof CompleteFounderCommandMap;
+export type CompleteFounderCommandResultMap = Omit<
+  FounderCommandResultMap,
+  FounderBootstrapCommandName
+> &
+  Record<FounderBootstrapCommandName, CompleteFounderAppBootstrap> &
+  HackathonCommandResultMap;
 export type CompleteFounderCommandResult<K extends CompleteFounderCommandName> =
   K extends keyof HackathonCommandResultMap
     ? HackathonCommandResultMap[K]
-    : K extends FounderCommandName
-      ? FounderCommandResult<K>
-      : never;
+    : K extends FounderBootstrapCommandName
+      ? CompleteFounderAppBootstrap
+      : K extends FounderCommandName
+        ? FounderCommandResult<K>
+        : never;
