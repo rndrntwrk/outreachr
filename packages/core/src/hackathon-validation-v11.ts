@@ -8,7 +8,7 @@ import { Sha256Schema } from './venture-validation.js';
 
 export * from './hackathon-validation.js';
 
-export const HackathonCycleSchema = BaseHackathonCycleSchema.extend({
+export const HackathonCycleSchema = BaseHackathonCycleSchema.safeExtend({
   rulesSha256: Sha256Schema.nullable().default(null),
 });
 
