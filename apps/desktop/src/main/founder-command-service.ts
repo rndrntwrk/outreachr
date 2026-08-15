@@ -37,10 +37,8 @@ export class FounderCommandService {
   }
 
   async bootstrap(): Promise<FounderAppBootstrap> {
-    const [base, authority] = await Promise.all([
-      this.#base.bootstrap(),
-      this.#ventures.bootstrap(),
-    ]);
+    const base = await this.#base.bootstrap();
+    const authority = await this.#ventures.bootstrap();
     return { ...base, ...authority };
   }
 
@@ -54,10 +52,7 @@ export class FounderCommandService {
       >;
     }
 
-    const result = await this.#base.execute(
-      name as keyof CommandMap,
-      untrustedPayload,
-    );
+    const result = await this.#base.execute(name as keyof CommandMap, untrustedPayload);
     if (!APP_BOOTSTRAP_COMMANDS.has(name)) {
       return result as FounderCommandResult<K>;
     }
