@@ -94,7 +94,7 @@ export class OpportunityService {
       input.opportunityId,
       input.sourceId,
       input.sourceRole,
-      input.decision,
+      input.decision === 'accept' ? 'accepted' : 'rejected',
       this.#now().toISOString(),
     );
     await this.#vault.persist();
