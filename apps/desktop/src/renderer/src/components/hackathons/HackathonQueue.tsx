@@ -8,11 +8,15 @@ import type { VentureSummary } from '../../../../shared/venture-contracts';
 import { Badge, Button, formatDate, titleCase } from '../ui';
 import { HackathonScorecard } from './HackathonScorecard';
 
-function stateTone(state: HackathonEntrySummary['state']): 'neutral' | 'info' | 'warning' | 'success' {
-  if (['submitted', 'finalist', 'result_recorded', 'follow_up', 'completed'].includes(state)) {
-    return 'success';
+function stateTone(
+  state: HackathonEntrySummary['state'],
+): 'neutral' | 'accent' | 'info' | 'warning' | 'danger' | 'success' {
+  if (['finalist', 'won', 'converted'].includes(state)) return 'success';
+  if (['submitted', 'judging', 'building', 'verification', 'submission_ready'].includes(state)) {
+    return 'info';
   }
-  if (['building', 'submission_ready', 'selected'].includes(state)) return 'info';
+  if (['approved', 'scoped'].includes(state)) return 'accent';
+  if (['not_selected', 'withdrawn'].includes(state)) return 'danger';
   if (state === 'candidate') return 'warning';
   return 'neutral';
 }
