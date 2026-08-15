@@ -2,8 +2,8 @@
 
 **Run your fundraising round from a private desktop workspace.**
 
-[![CI](https://github.com/lalalune/outreachr/actions/workflows/verify.yml/badge.svg)](https://github.com/lalalune/outreachr/actions/workflows/verify.yml)
-[![CodeQL](https://github.com/lalalune/outreachr/actions/workflows/codeql.yml/badge.svg)](https://github.com/lalalune/outreachr/actions/workflows/codeql.yml)
+[![CI](https://github.com/rndrntwrk/outreachr/actions/workflows/verify.yml/badge.svg)](https://github.com/rndrntwrk/outreachr/actions/workflows/verify.yml)
+[![CodeQL](https://github.com/rndrntwrk/outreachr/actions/workflows/codeql.yml/badge.svg)](https://github.com/rndrntwrk/outreachr/actions/workflows/codeql.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-0b7285.svg)](LICENSE)
 
 Outreachr is a free, open-source fundraising operating system for founders raising pre-seed, seed, or Series A. It brings investor research, target ranking, introductions, one-to-one outreach, meetings, diligence, and committed capital into one founder-owned SQLite workspace—without an Outreachr-hosted account or Outreachr subscription.
