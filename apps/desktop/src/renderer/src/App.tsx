@@ -4,6 +4,7 @@ import { ErrorScreen, LoadingScreen } from './components/ui';
 import { useWorkspace } from './state/WorkspaceContext';
 import { AgentPage } from './pages/AgentPage';
 import { DocumentsPage } from './pages/DocumentsPage';
+import { HackathonEntryPage } from './pages/HackathonEntryPage';
 import { HackathonStudioPage } from './pages/HackathonStudioPage';
 import { IntroductionsPage } from './pages/IntroductionsPage';
 import { InvestorDetailPage } from './pages/InvestorDetailPage';
@@ -40,6 +41,7 @@ export function App(): React.JSX.Element {
     <AppShell>
       <Routes>
         <Route path="/" element={<UpNextPage />} />
+        <Route path="/hackathons/:entryId" element={<HackathonEntryPage />} />
         <Route path="/hackathons" element={<HackathonStudioPage />} />
         <Route path="/round" element={<RoundOverviewPage />} />
         <Route path="/ventures" element={<VenturesPage />} />
