@@ -6,7 +6,7 @@
   "workers_dev": true,
   "preview_urls": true,
   "limits": {
-    "cpu_ms": 50,
+    "cpu_ms": 10,
     "subrequests": 8
   },
   "version_metadata": {
