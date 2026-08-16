@@ -7,6 +7,7 @@ import './styles/global.css';
 import './styles/authority.css';
 import './styles/hackathon-studio.css';
 import './styles/hackathon-entry.css';
+import './styles/hackathon-entry-evidence.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
