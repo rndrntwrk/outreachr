@@ -8,6 +8,7 @@ import type {
 import { Badge, Button, Section, TextField, titleCase } from '../ui';
 import type { HackathonEntryWorkspaceDetail } from './entry-model';
 
+const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
 const REQUIRED_PHASES = ['pre_event', 'submission_day', 'post_result'] as const;
 const ITEM_KINDS = [
   'pre_build_announcement',
@@ -31,6 +32,16 @@ function planTone(status: string | undefined): 'success' | 'warning' | 'neutral'
   if (status && ['approved', 'active', 'completed'].includes(status)) return 'success';
   if (status === 'draft') return 'warning';
   return 'neutral';
+}
+
+function planStatusOptions(
+  plan: HackathonEntryWorkspaceDetail['distributionPlan'],
+): HackathonDistributionSaveInput['status'][] {
+  if (!plan) return ['draft'];
+  if (plan.status === 'draft') return ['draft', 'approved'];
+  if (plan.status === 'approved') return ['approved', 'active', 'completed', 'cancelled'];
+  if (plan.status === 'active') return ['active', 'completed', 'cancelled'];
+  return [plan.status];
 }
 
 export function DistributionPlanPanel({
@@ -61,6 +72,7 @@ export function DistributionPlanPanel({
   const [scheduledAt, setScheduledAt] = useState('');
   const [completedAt, setCompletedAt] = useState('');
   const [reference, setReference] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
     setSummary(plan?.summary ?? '');
@@ -78,8 +90,26 @@ export function DistributionPlanPanel({
     [entry.distributionItems],
   );
   const missingPhases = REQUIRED_PHASES.filter((required) => !phases.has(required));
+  const contentLocked = Boolean(plan && plan.status !== 'draft');
+  const itemsLocked = Boolean(plan && plan.status !== 'draft');
+  const statusOptions = planStatusOptions(plan);
 
   const savePlan = async (): Promise<void> => {
+    setLocalError(null);
+    if (!summary.trim()) {
+      setLocalError('Distribution summary is required.');
+      return;
+    }
+    if (!SHA256_PATTERN.test(digest.trim())) {
+      setLocalError('Distribution plan requires an exact 64-character lowercase SHA-256.');
+      return;
+    }
+    if (status === 'approved' && missingPhases.length) {
+      setLocalError(
+        `Founder approval requires ${missingPhases.map(titleCase).join(', ')} operations.`,
+      );
+      return;
+    }
     await onSavePlan({
       ...(plan ? { id: plan.id } : {}),
       entryId: entry.id,
@@ -90,7 +120,19 @@ export function DistributionPlanPanel({
   };
 
   const saveItem = async (): Promise<void> => {
-    if (!plan) return;
+    setLocalError(null);
+    if (!plan || itemsLocked) {
+      setLocalError('Distribution operations must be completed before founder plan approval.');
+      return;
+    }
+    if (!title.trim()) {
+      setLocalError('Distribution operation title is required.');
+      return;
+    }
+    if (itemStatus === 'published' && (!completedAt.trim() || !reference.trim())) {
+      setLocalError('Published distribution operations require completion time and evidence.');
+      return;
+    }
     await onSaveItem({
       planId: plan.id,
       kind,
@@ -111,12 +153,17 @@ export function DistributionPlanPanel({
     <Section
       title="Distribution program"
       description="Readiness requires a founder-approved plan with pre-event, submission-day and post-result operations. Distribution is part of the entry execution graph, not an after-the-fact announcement."
-      action={<Badge tone={planTone(plan?.status)}>{plan ? titleCase(plan.status) : 'No plan'}</Badge>}
+      action={
+        <Badge tone={planTone(plan?.status)}>{plan ? titleCase(plan.status) : 'No plan'}</Badge>
+      }
       className="hackathon-entry-section"
     >
       <div className="hackathon-phase-strip" aria-label="Distribution phase coverage">
         {REQUIRED_PHASES.map((required) => (
-          <div key={required} className={phases.has(required) ? 'is-complete' : 'is-missing'}>
+          <div
+            key={required}
+            className={phases.has(required) ? 'is-complete' : 'is-missing'}
+          >
             <span>{titleCase(required)}</span>
             <strong>{phases.has(required) ? 'Configured' : 'Missing'}</strong>
           </div>
@@ -139,18 +186,46 @@ export function DistributionPlanPanel({
           <h3>Plan authority</h3>
           <label className="field">
             <span className="field__label">Program summary</span>
-            <textarea className="textarea" value={summary} onChange={(event) => setSummary(event.target.value)} />
+            <textarea
+              className="textarea"
+              value={summary}
+              disabled={contentLocked || busy}
+              onChange={(event) => setSummary(event.target.value)}
+            />
           </label>
-          <TextField label="Plan content SHA-256" value={digest} onChange={(event) => setDigest(event.target.value)} className="mono" />
+          <TextField
+            label="Plan content SHA-256"
+            value={digest}
+            disabled={contentLocked || busy}
+            onChange={(event) => setDigest(event.target.value)}
+            className="mono"
+          />
           <label className="field">
             <span className="field__label">Plan state</span>
-            <select className="select" value={status} onChange={(event) => setStatus(event.target.value as typeof status)}>
-              {['draft', 'approved', 'active', 'completed', 'cancelled'].map((value) => (
-                <option key={value} value={value}>{titleCase(value)}</option>
+            <select
+              className="select"
+              value={status}
+              disabled={busy}
+              onChange={(event) => setStatus(event.target.value as typeof status)}
+            >
+              {statusOptions.map((value) => (
+                <option key={value} value={value}>
+                  {titleCase(value)}
+                </option>
               ))}
             </select>
           </label>
-          <Button type="submit" tone="primary" loading={busy} icon={<Save aria-hidden="true" />}>
+          {contentLocked ? (
+            <p className="text-muted">
+              Approved plan content is immutable. Only allowed lifecycle transitions remain editable.
+            </p>
+          ) : null}
+          <Button
+            type="submit"
+            tone="primary"
+            loading={busy}
+            icon={<Save aria-hidden="true" />}
+          >
             Save distribution plan
           </Button>
         </form>
@@ -166,32 +241,88 @@ export function DistributionPlanPanel({
           <div className="hackathon-entry-form-grid">
             <label className="field">
               <span className="field__label">Operation kind</span>
-              <select className="select" value={kind} onChange={(event) => setKind(event.target.value as typeof kind)}>
-                {ITEM_KINDS.map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}
+              <select
+                className="select"
+                value={kind}
+                disabled={itemsLocked || busy}
+                onChange={(event) => setKind(event.target.value as typeof kind)}
+              >
+                {ITEM_KINDS.map((value) => (
+                  <option key={value} value={value}>
+                    {titleCase(value)}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="field">
               <span className="field__label">Phase</span>
-              <select className="select" value={phase} onChange={(event) => setPhase(event.target.value as typeof phase)}>
-                {REQUIRED_PHASES.map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}
+              <select
+                className="select"
+                value={phase}
+                disabled={itemsLocked || busy}
+                onChange={(event) => setPhase(event.target.value as typeof phase)}
+              >
+                {REQUIRED_PHASES.map((value) => (
+                  <option key={value} value={value}>
+                    {titleCase(value)}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="field">
               <span className="field__label">Operation state</span>
-              <select className="select" value={itemStatus} onChange={(event) => setItemStatus(event.target.value as typeof itemStatus)}>
-                {['planned', 'ready', 'published', 'cancelled'].map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}
+              <select
+                className="select"
+                value={itemStatus}
+                disabled={itemsLocked || busy}
+                onChange={(event) => setItemStatus(event.target.value as typeof itemStatus)}
+              >
+                {['planned', 'ready', 'published', 'cancelled'].map((value) => (
+                  <option key={value} value={value}>
+                    {titleCase(value)}
+                  </option>
+                ))}
               </select>
             </label>
-            <TextField label="Title" value={title} onChange={(event) => setTitle(event.target.value)} />
-            <TextField label="Scheduled at" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} placeholder="ISO 8601 or blank" />
-            <TextField label="Completed at" value={completedAt} onChange={(event) => setCompletedAt(event.target.value)} placeholder="ISO 8601 or blank" />
-            <TextField label="Reference" value={reference} onChange={(event) => setReference(event.target.value)} />
+            <TextField
+              label="Title"
+              value={title}
+              disabled={itemsLocked || busy}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+            <TextField
+              label="Scheduled at"
+              value={scheduledAt}
+              disabled={itemsLocked || busy}
+              onChange={(event) => setScheduledAt(event.target.value)}
+              placeholder="ISO 8601 or blank"
+            />
+            <TextField
+              label="Completed at"
+              value={completedAt}
+              disabled={itemsLocked || busy}
+              onChange={(event) => setCompletedAt(event.target.value)}
+              placeholder="ISO 8601 or blank"
+            />
+            <TextField
+              label="Reference"
+              value={reference}
+              disabled={itemsLocked || busy}
+              onChange={(event) => setReference(event.target.value)}
+            />
           </div>
-          <Button type="submit" icon={<Plus aria-hidden="true" />} disabled={!plan} loading={busy}>
+          <Button
+            type="submit"
+            icon={<Plus aria-hidden="true" />}
+            disabled={!plan || itemsLocked}
+            loading={busy}
+          >
             Add distribution operation
           </Button>
         </form>
       </div>
+
+      {localError ? <p className="field__error">{localError}</p> : null}
 
       <div className="hackathon-distribution-list">
         {entry.distributionItems.map((item) => (
@@ -199,7 +330,9 @@ export function DistributionPlanPanel({
             <Megaphone aria-hidden="true" />
             <span>
               <strong>{item.title}</strong>
-              <small>{titleCase(item.kind)} · {titleCase(item.phase)} · {titleCase(item.status)}</small>
+              <small>
+                {titleCase(item.kind)} · {titleCase(item.phase)} · {titleCase(item.status)}
+              </small>
             </span>
             <code>{item.reference ?? 'No published reference'}</code>
           </article>
