@@ -5,44 +5,147 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Outreachr is a founder-operated, local-first opportunity and relationship workspace."
+      content="Outreachr keeps founder authority in an encrypted local SQLite vault and uses demand-loaded Cloudflare execution for public distribution and bounded work."
     />
-    <title>Outreachr · Founder-operated opportunity system</title>
+    <title>Outreachr · Local authority and demand-loaded execution</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Outreachr home">Outreachr</a>
+      <span>RNDRNTWRK</span>
+    </header>
+
     <main>
-      <p class="eyebrow">RNDRNTWRK · Outreachr</p>
-      <h1>A private execution system for one founder.</h1>
-      <p class="lede">
-        Outreachr keeps its canonical operating record in an encrypted local vault. The cloud edge
-        distributes public releases and reviewed Opportunity Atlas intelligence without becoming the
-        owner of private founder authority.
-      </p>
-      <section aria-labelledby="boundary-title">
-        <h2 id="boundary-title">The boundary is deliberate</h2>
-        <dl>
+      <section class="hero" aria-labelledby="page-title">
+        <div>
+          <h1 id="page-title">Local authority. Demand-loaded execution.</h1>
+          <p>
+            The encrypted local SQLite vault is the canonical operating record. Cloudflare receives
+            only public data, pseudonymous control metadata, client-encrypted objects, or an exact
+            founder-authorized task envelope.
+          </p>
+        </div>
+        <dl class="hero-facts">
           <div>
-            <dt>Local authority</dt>
-            <dd>Applications, relationships, decisions, receipts, evidence, and credentials stay on the founder device.</dd>
+            <dt>Authority</dt>
+            <dd>Founder device</dd>
           </div>
           <div>
-            <dt>Cloud acceleration</dt>
-            <dd>Public releases, Atlas packages, durable jobs, encrypted backups, and proposal delivery use bounded Cloudflare services.</dd>
+            <dt>Idle compute</dt>
+            <dd>Approximately zero</dd>
           </div>
           <div>
-            <dt>No false autonomy</dt>
-            <dd>Agents can prepare proposals. They cannot send, submit, publish, spend, sign, accept terms, or merge code.</dd>
+            <dt>Primary metric</dt>
+            <dd>Cost per completed unit</dd>
           </div>
         </dl>
       </section>
-      <nav aria-label="Public resources">
+
+      <section class="trace-section" aria-labelledby="trace-title">
+        <div class="section-heading">
+          <h2 id="trace-title">Execution trace</h2>
+          <p>The founder approves every consequential transition.</p>
+        </div>
+        <pre class="architecture-trace" aria-label="Outreachr execution architecture"><code>Founder device
+  encrypted local SQLite vault
+  founder approval + evidence + receipt
+          |
+          | signed bounded request
+          v
+Cloudflare admission
+  identity + authority + task class
+  persistence + isolation + privacy
+  CPU + subrequest + spend ceilings
+          |
+          v
+execution-class router
+  Worker isolate
+  Workflow / Queue / Durable Object
+  Dynamic Worker
+  Sandbox / Container
+          |
+          v
+cost and evidence ledger
+  version + output + operations + retries
+          |
+          v
+terminate / sleep / hibernate</code></pre>
+      </section>
+
+      <section aria-labelledby="routing-title">
+        <div class="section-heading">
+          <h2 id="routing-title">Routing contract</h2>
+          <p>The shortest valid execution class handles each operation.</p>
+        </div>
+        <div class="routing-table" role="table" aria-label="Execution classes">
+          <div class="routing-row routing-row--header" role="row">
+            <span role="columnheader">Workload</span>
+            <span role="columnheader">Execution class</span>
+            <span role="columnheader">Stop condition</span>
+          </div>
+          <div class="routing-row" role="row">
+            <span role="cell">Short request, policy, route</span>
+            <span role="cell">Worker isolate</span>
+            <span role="cell">Response returned</span>
+          </div>
+          <div class="routing-row" role="row">
+            <span role="cell">Ordered room or session state</span>
+            <span role="cell">Durable Object</span>
+            <span role="cell">Hibernate when eligible</span>
+          </div>
+          <div class="routing-row" role="row">
+            <span role="cell">Retry, wait, asynchronous fan-out</span>
+            <span role="cell">Workflow / Queue</span>
+            <span role="cell">Terminal state or dead letter</span>
+          </div>
+          <div class="routing-row" role="row">
+            <span role="cell">Filesystem, browser, native process</span>
+            <span role="cell">Sandbox / Container</span>
+            <span role="cell">Evidence copied; process destroyed</span>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="boundary-title">
+        <div class="section-heading">
+          <h2 id="boundary-title">Authority boundary</h2>
+          <p>Cloud execution produces data or proposals; it does not become the founder.</p>
+        </div>
+        <div class="boundary-grid">
+          <article>
+            <h3>Canonical state</h3>
+            <p>
+              Applications, relationships, narrative authority, decisions, receipts, evidence, and
+              credentials remain in the encrypted local vault.
+            </p>
+          </article>
+          <article>
+            <h3>Cloud output</h3>
+            <p>
+              Public releases, reviewed Atlas packages, durable jobs, encrypted backups, and typed
+              proposals use bounded, versioned services.
+            </p>
+          </article>
+          <article>
+            <h3>External action</h3>
+            <p>
+              Agents cannot send, submit, publish, spend, sign, accept terms, or merge code. They
+              return founder-reviewable proposals.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <nav class="resource-nav" aria-label="Public technical resources">
         <a href="/api/v1/atlas/index">Opportunity Atlas index</a>
-        <a href="/health/live">Service health</a>
+        <a href="/health/live">Liveness</a>
+        <a href="/health/ready">Readiness</a>
       </nav>
     </main>
+
     <footer>
-      <p>Founder-operated. Local-first. Evidence-first.</p>
+      <p>Versioned public edge · no hosted founder vault · no autonomous external action</p>
     </footer>
   </body>
 </html>
