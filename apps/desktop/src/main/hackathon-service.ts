@@ -1,8 +1,10 @@
+import { HackathonRepository } from '@outreachr/core';
 import type {
   HackathonBuildSaveInput,
   HackathonBuildSummary,
   HackathonDistributionSaveInput,
   HackathonDistributionSummary,
+  HackathonEntryDetail,
   HackathonSubmissionSaveInput,
   HackathonSubmissionSummary,
 } from '../shared/hackathon-contracts';
@@ -10,6 +12,7 @@ import {
   HackathonService as HackathonServiceBase,
   type EligibilityProfileProvider,
 } from './hackathon-service-base';
+import type { VaultService } from './vault-service';
 
 export type { EligibilityProfileProvider };
 
@@ -19,7 +22,26 @@ const REQUIRED_DISTRIBUTION_PHASES = [
   'post_result',
 ] as const;
 
+export interface HackathonEntryWorkspaceContext {
+  rules: ReturnType<HackathonRepository['listRules']>;
+  tracks: ReturnType<HackathonRepository['listTracks']>;
+  bounties: ReturnType<HackathonRepository['listBounties']>;
+}
+
+interface HackathonServiceOptions {
+  vault: VaultService;
+  now?: () => Date;
+  eligibilityProfileProvider?: EligibilityProfileProvider;
+}
+
 export class HackathonService extends HackathonServiceBase {
+  readonly #vault: VaultService;
+
+  constructor(options: HackathonServiceOptions) {
+    super(options);
+    this.#vault = options.vault;
+  }
+
   override async saveBuild(input: HackathonBuildSaveInput): Promise<HackathonBuildSummary> {
     if (input.id) return super.saveBuild(input);
     const existingId = (await this.getEntry(input.entryId)).build?.id;
@@ -77,5 +99,22 @@ export class HackathonService extends HackathonServiceBase {
       throw new Error('Submission commit must match the current verified build commit.');
     }
     return super.saveSubmission(input);
+  }
+
+  override async getEntry(
+    id: string,
+  ): Promise<HackathonEntryDetail & HackathonEntryWorkspaceContext> {
+    const detail = await super.getEntry(id);
+    const repository = new HackathonRepository(this.#vault.vault);
+    const trackIds = new Set(detail.trackIds);
+    const bountyIds = new Set(detail.bountyIds);
+    return {
+      ...detail,
+      rules: repository.listRules(detail.cycleId),
+      tracks: repository.listTracks(detail.cycleId).filter((track) => trackIds.has(track.id)),
+      bounties: repository
+        .listBounties(detail.cycleId)
+        .filter((bounty) => bountyIds.has(bounty.id)),
+    };
   }
 }
