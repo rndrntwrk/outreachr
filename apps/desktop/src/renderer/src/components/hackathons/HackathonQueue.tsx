@@ -4,6 +4,7 @@ import type {
   OpportunitySummary,
 } from '../../../../shared/hackathon-contracts';
 import type { VentureSummary } from '../../../../shared/venture-contracts';
+import { useNavigate } from '../../lib/router';
 import { Badge, formatDate, titleCase } from '../ui';
 import { HackathonScorecard } from './HackathonScorecard';
 
@@ -68,6 +69,7 @@ export function HackathonQueue({
   demoVersionsById: ReadonlyMap<string, HackathonDemoLabel>;
   emptyMessage: string;
 }): React.JSX.Element {
+  const navigate = useNavigate();
   if (entries.length === 0) {
     return <p className="hackathon-queue-empty">{emptyMessage}</p>;
   }
@@ -94,14 +96,18 @@ export function HackathonQueue({
             return (
               <tr key={entry.id}>
                 <td>
-                  <div className="hackathon-entry-copy">
+                  <button
+                    className="hackathon-entry-link"
+                    onClick={() => navigate(`/hackathons/${encodeURIComponent(entry.id)}`)}
+                    aria-label={`Open ${entry.submissionConcept}`}
+                  >
                     <strong className="data-table__primary">{entry.submissionConcept}</strong>
                     <span className="data-table__secondary">
                       {opportunity?.name ?? 'Unknown opportunity'} ·{' '}
                       {cycle?.cycleName ?? 'Unknown cycle'}
                     </span>
                     <span className="data-table__secondary">{entry.ecosystemAdapter}</span>
-                  </div>
+                  </button>
                 </td>
                 <td>
                   <strong>{venture?.name ?? 'Unknown venture'}</strong>
