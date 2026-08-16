@@ -14,7 +14,6 @@ import type {
   HackathonConversionSaveInput,
   HackathonDistributionItemSaveInput,
   HackathonDistributionSaveInput,
-  HackathonEntryDetail,
   HackathonResultSaveInput,
   HackathonSubmissionSaveInput,
 } from '../../../shared/hackathon-contracts';
@@ -63,9 +62,15 @@ function transitionAllowed(
 ): boolean {
   if (!target) return false;
   if (target === 'approved') {
-    return entry.readiness.authorityReady && entry.readiness.decisionReady && entry.readiness.eligibilityReady;
+    return (
+      entry.readiness.authorityReady &&
+      entry.readiness.decisionReady &&
+      entry.readiness.eligibilityReady
+    );
   }
-  if (target === 'scoped') return entry.readiness.authorityReady && entry.readiness.decisionReady;
+  if (target === 'scoped') {
+    return entry.readiness.authorityReady && entry.readiness.decisionReady;
+  }
   if (target === 'building') return entry.readiness.readyForBuild;
   if (target === 'submission_ready') return entry.readiness.readyForSubmission;
   if (target === 'submitted') return entry.readiness.receiptReady;
@@ -74,6 +79,10 @@ function transitionAllowed(
 
 function gateTone(ready: boolean): 'success' | 'warning' {
   return ready ? 'success' : 'warning';
+}
+
+function transitionButtonLabel(state: HackathonEntryWorkspaceDetail['state']): string {
+  return titleCase(state).toLowerCase().replaceAll(' ', '-');
 }
 
 export function HackathonEntryPage(): React.JSX.Element {
@@ -95,7 +104,9 @@ export function HackathonEntryPage(): React.JSX.Element {
     try {
       const value = await command('hackathon.entry.get', { id: entryId });
       if (!isHackathonEntryWorkspaceDetail(value)) {
-        throw new Error('Hackathon entry context is incomplete. Rules, tracks and bounties are required.');
+        throw new Error(
+          'Hackathon entry context is incomplete. Rules, tracks and bounties are required.',
+        );
       }
       setEntry(value);
       setError(null);
@@ -128,10 +139,12 @@ export function HackathonEntryPage(): React.JSX.Element {
     if (!entry || !data) return null;
     const cycle = data.hackathonCycles.find((item) => item.id === entry.cycleId) ?? null;
     const opportunity = cycle
-      ? data.opportunities.find((item) => item.id === cycle.opportunityId) ?? null
+      ? (data.opportunities.find((item) => item.id === cycle.opportunityId) ?? null)
       : null;
-    const legalEntity = data.legalEntities.find((item) => item.id === entry.legalEntityId) ?? null;
-    const narrative = data.narrativeProfiles.find((item) => item.id === entry.narrativeProfileId) ?? null;
+    const legalEntity =
+      data.legalEntities.find((item) => item.id === entry.legalEntityId) ?? null;
+    const narrative =
+      data.narrativeProfiles.find((item) => item.id === entry.narrativeProfileId) ?? null;
     const ventureLinks = entry.ventures.map((link) => ({
       ...link,
       venture: data.ventures.find((item) => item.id === link.ventureId) ?? null,
@@ -139,16 +152,18 @@ export function HackathonEntryPage(): React.JSX.Element {
     const demo = data.canonicalDemos.find((item) =>
       item.versions.some((version) => version.id === entry.canonicalDemoVersionId),
     );
-    const demoVersion = demo?.versions.find(
-      (version) => version.id === entry.canonicalDemoVersionId,
-    ) ?? null;
+    const demoVersion =
+      demo?.versions.find((version) => version.id === entry.canonicalDemoVersionId) ?? null;
     return { cycle, opportunity, legalEntity, narrative, ventureLinks, demo, demoVersion };
   }, [data, entry]);
 
   if (loading) {
     return (
       <div className="page">
-        <PageHeader title="Hackathon entry" description="Loading founder authority and readiness evidence." />
+        <PageHeader
+          title="Hackathon entry"
+          description="Loading founder authority and readiness evidence."
+        />
       </div>
     );
   }
@@ -158,7 +173,14 @@ export function HackathonEntryPage(): React.JSX.Element {
       <div className="page">
         <PageHeader
           title="Hackathon entry unavailable"
-          actions={<Button icon={<ArrowLeft aria-hidden="true" />} onClick={() => navigate('/hackathons')}>Back to Studio</Button>}
+          actions={
+            <Button
+              icon={<ArrowLeft aria-hidden="true" />}
+              onClick={() => navigate('/hackathons')}
+            >
+              Back to Studio
+            </Button>
+          }
         />
         <EmptyState
           title="Entry context could not be resolved"
@@ -200,7 +222,10 @@ export function HackathonEntryPage(): React.JSX.Element {
         }
         actions={
           <>
-            <Button icon={<ArrowLeft aria-hidden="true" />} onClick={() => navigate('/hackathons')}>
+            <Button
+              icon={<ArrowLeft aria-hidden="true" />}
+              onClick={() => navigate('/hackathons')}
+            >
               Back to Studio
             </Button>
             {targetState ? (
@@ -229,17 +254,23 @@ export function HackathonEntryPage(): React.JSX.Element {
         </div>
         <div>
           <span>Product authority</span>
-          <strong>Lead · {leadVenture?.venture?.name ?? leadVenture?.ventureId ?? 'Missing'}</strong>
+          <strong>
+            Lead · {leadVenture?.venture?.name ?? leadVenture?.ventureId ?? 'Missing'}
+          </strong>
           <small>
             {supportingVentures.length
-              ? supportingVentures.map((link) => `Supporting · ${link.venture?.name ?? link.ventureId}`).join(' · ')
+              ? supportingVentures
+                  .map((link) => `Supporting · ${link.venture?.name ?? link.ventureId}`)
+                  .join(' · ')
               : 'No supporting venture'}
           </small>
         </div>
         <div>
           <span>Narrative authority</span>
           <strong>
-            {context.narrative ? `${titleCase(context.narrative.purpose)} narrative v${context.narrative.version}` : entry.narrativeProfileId}
+            {context.narrative
+              ? `${titleCase(context.narrative.purpose)} narrative v${context.narrative.version}`
+              : entry.narrativeProfileId}
           </strong>
           <small className="mono">{shortDigest(context.narrative?.contentSha256)}</small>
         </div>
@@ -250,12 +281,16 @@ export function HackathonEntryPage(): React.JSX.Element {
               ? `${context.demo.name} v${context.demoVersion.version}`
               : entry.canonicalDemoVersionId}
           </strong>
-          <small className="mono">{context.demoVersion?.baselineCommitSha ?? 'No baseline SHA'}</small>
+          <small className="mono">
+            {context.demoVersion?.baselineCommitSha ?? 'No baseline SHA'}
+          </small>
         </div>
         <div>
           <span>Next deadline</span>
           <strong>{formatDate(entry.nextDeadlineAt, true)}</strong>
-          <small>{entry.estimatedHours}h planned · {entry.reusePercentage}% reuse</small>
+          <small>
+            {entry.estimatedHours}h planned · {entry.reusePercentage}% reuse
+          </small>
         </div>
       </section>
 
@@ -267,7 +302,11 @@ export function HackathonEntryPage(): React.JSX.Element {
         <div className="hackathon-readiness-grid">
           {readinessGates.map(([label, ready]) => (
             <div key={label}>
-              {ready ? <CheckCircle2 aria-hidden="true" /> : <CircleSlash2 aria-hidden="true" />}
+              {ready ? (
+                <CheckCircle2 aria-hidden="true" />
+              ) : (
+                <CircleSlash2 aria-hidden="true" />
+              )}
               <span>{label}</span>
               <Badge tone={gateTone(ready)}>{ready ? 'Ready' : 'Blocked'}</Badge>
             </div>
@@ -292,12 +331,18 @@ export function HackathonEntryPage(): React.JSX.Element {
         <div className="hackathon-entry-scope-grid">
           <div>
             <GitBranch aria-hidden="true" />
-            <span><strong>Ecosystem adapter</strong><small>{entry.ecosystemAdapter}</small></span>
+            <span>
+              <strong>Ecosystem adapter</strong>
+              <small>{entry.ecosystemAdapter}</small>
+            </span>
           </div>
           {entry.tracks.map((track) => (
             <div key={track.id}>
               <ShieldCheck aria-hidden="true" />
-              <span><strong>{track.name}</strong><small>{track.goals ?? 'No track goal recorded'}</small></span>
+              <span>
+                <strong>{track.name}</strong>
+                <small>{track.goals ?? 'No track goal recorded'}</small>
+              </span>
             </div>
           ))}
           {entry.bounties.map((bounty) => (
@@ -305,10 +350,12 @@ export function HackathonEntryPage(): React.JSX.Element {
               <Timer aria-hidden="true" />
               <span>
                 <strong>{bounty.title}</strong>
-                <small>
-                  {bounty.requiredTechnology ?? 'No required technology recorded'}
-                  {bounty.amountValue !== null ? ` · ${bounty.amountValue} ${bounty.amountAsset ?? ''}` : ''}
-                </small>
+                <small>{bounty.requiredTechnology ?? 'No required technology recorded'}</small>
+                {bounty.amountValue !== null ? (
+                  <small>
+                    {bounty.amountValue} {bounty.amountAsset ?? ''}
+                  </small>
+                ) : null}
               </span>
             </div>
           ))}
@@ -399,7 +446,9 @@ export function HackathonEntryPage(): React.JSX.Element {
         onClose={() => setTransitionOpen(false)}
         footer={
           <>
-            <Button tone="quiet" onClick={() => setTransitionOpen(false)}>Cancel</Button>
+            <Button tone="quiet" onClick={() => setTransitionOpen(false)}>
+              Cancel
+            </Button>
             {targetState ? (
               <Button
                 tone="primary"
@@ -407,23 +456,29 @@ export function HackathonEntryPage(): React.JSX.Element {
                 onClick={() => {
                   setTransitionOpen(false);
                   void runMutation(
-                    () => command('hackathon.entry.transition', { id: entry.id, toState: targetState }),
+                    () =>
+                      command('hackathon.entry.transition', {
+                        id: entry.id,
+                        toState: targetState,
+                      }),
                     `Entry moved to ${titleCase(targetState)}`,
                   );
                 }}
               >
-                Confirm {titleCase(targetState).toLowerCase()} state
+                Confirm {transitionButtonLabel(targetState)} state
               </Button>
             ) : null}
           </>
         }
       >
         <div className="hackathon-transition-review">
-          <p><strong>Server readiness:</strong> {canMove ? 'complete' : 'blocked'}</p>
-          <p><strong>Current state:</strong> {titleCase(entry.state)}</p>
-          <p><strong>Requested state:</strong> {targetState ? titleCase(targetState) : 'None'}</p>
+          <p>{`Server readiness: ${canMove ? 'complete' : 'blocked'}`}</p>
+          <p>{`Current state: ${titleCase(entry.state)}`}</p>
+          <p>{`Requested state: ${targetState ? titleCase(targetState) : 'None'}`}</p>
           <p className="mono">Current commit {entry.build?.currentCommitSha ?? 'not recorded'}</p>
-          {entry.readiness.blockingReasons.map((reason) => <p key={reason}>{reason}</p>)}
+          {entry.readiness.blockingReasons.map((reason) => (
+            <p key={reason}>{reason}</p>
+          ))}
         </div>
       </Dialog>
     </div>
