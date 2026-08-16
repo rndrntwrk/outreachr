@@ -13,7 +13,7 @@ test('public landing page explains the architecture as a technical execution tra
     'Workflow / Queue / Durable Object',
     'Sandbox / Container',
     'terminate / sleep / hibernate',
-    'cost per completed unit',
+    'Cost per completed unit',
   ]) {
     assert.match(html, new RegExp(required.replaceAll('/', '\\/'), 'u'), required);
   }
