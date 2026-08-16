@@ -30,7 +30,7 @@
     "format": "prettier --write .",
     "pretest": "pnpm build:packages",
     "test": "pnpm -r --if-present test && pnpm test:cloud",
-    "test:cloud": "node --test cloud/public/test/*.test.mjs",
+    "test:cloud": "node --test cloud/public/test/*.test.mjs scripts/cloud/test/*.test.mjs",
     "pretest:unit": "pnpm build:packages",
     "test:unit": "pnpm -r --if-present test:unit",
     "pretest:integration": "pnpm build:packages",
