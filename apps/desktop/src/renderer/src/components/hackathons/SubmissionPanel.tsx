@@ -22,11 +22,28 @@ const ASSET_KINDS = [
   'other',
 ] as const;
 
+interface AssetEvidenceDraft {
+  reference: string;
+  contentSha256: string;
+}
+
 function assetTone(status: string): 'success' | 'warning' | 'danger' | 'neutral' {
   if (status === 'approved') return 'success';
   if (status === 'rejected') return 'danger';
   if (status === 'ready' || status === 'draft') return 'warning';
   return 'neutral';
+}
+
+function assetEvidence(entry: HackathonEntryWorkspaceDetail): Record<string, AssetEvidenceDraft> {
+  return Object.fromEntries(
+    entry.assets.map((asset) => [
+      asset.id,
+      {
+        reference: asset.reference ?? '',
+        contentSha256: asset.contentSha256 ?? '',
+      },
+    ]),
+  );
 }
 
 export function SubmissionPanel({
@@ -45,6 +62,9 @@ export function SubmissionPanel({
   const [status, setStatus] = useState<HackathonAssetSaveInput['status']>('missing');
   const [reference, setReference] = useState('');
   const [contentSha256, setContentSha256] = useState('');
+  const [assetEdits, setAssetEdits] = useState<Record<string, AssetEvidenceDraft>>(() =>
+    assetEvidence(entry),
+  );
   const [portalUrl, setPortalUrl] = useState(entry.submission?.portalUrl ?? '');
   const [repositoryCommitSha, setRepositoryCommitSha] = useState(
     entry.submission?.repositoryCommitSha ?? entry.build?.currentCommitSha ?? '',
@@ -58,6 +78,7 @@ export function SubmissionPanel({
   const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
+    setAssetEdits(assetEvidence(entry));
     setPortalUrl(entry.submission?.portalUrl ?? '');
     setRepositoryCommitSha(
       entry.submission?.repositoryCommitSha ?? entry.build?.currentCommitSha ?? '',
@@ -66,17 +87,41 @@ export function SubmissionPanel({
     setSubmissionDigest(entry.submission?.contentSha256 ?? '');
     setSubmissionStatus(entry.submission?.status ?? 'submitted');
     setSubmittedAt(entry.submission?.submittedAt ?? '');
-  }, [entry.build?.currentCommitSha, entry.submission]);
+  }, [entry]);
 
   const receiptAssets = useMemo(
-    () => entry.assets.filter((asset) => asset.kind === 'receipt' && asset.status === 'approved'),
+    () =>
+      entry.assets.filter(
+        (asset) =>
+          asset.kind === 'receipt' &&
+          asset.status === 'approved' &&
+          asset.founderReviewState === 'accepted',
+      ),
     [entry.assets],
   );
 
+  const updateAssetEvidence = (
+    id: string,
+    field: keyof AssetEvidenceDraft,
+    value: string,
+  ): void => {
+    setAssetEdits((current) => ({
+      ...current,
+      [id]: {
+        reference: current[id]?.reference ?? '',
+        contentSha256: current[id]?.contentSha256 ?? '',
+        [field]: value,
+      },
+    }));
+  };
+
   const saveNewAsset = async (): Promise<void> => {
     setLocalError(null);
-    if (status === 'approved' && (!reference.trim() || !contentSha256.trim())) {
-      setLocalError('Founder approval requires an exact reference and SHA-256 digest.');
+    if (
+      ['ready', 'approved'].includes(status) &&
+      (!reference.trim() || !contentSha256.trim())
+    ) {
+      setLocalError('Ready or approved assets require an exact reference and SHA-256 digest.');
       return;
     }
     await onSaveAsset({
@@ -98,8 +143,19 @@ export function SubmissionPanel({
     nextStatus: HackathonAssetSaveInput['status'],
     reviewDecision?: 'accept' | 'reject',
   ): Promise<void> => {
-    if (nextStatus === 'approved' && (!asset.reference || !asset.contentSha256)) {
-      setLocalError(`Asset ${asset.kind} requires a reference and digest before approval.`);
+    if (asset.founderReviewState !== 'pending') {
+      setLocalError(`Asset ${asset.kind} has already received a founder review.`);
+      return;
+    }
+    const evidence = assetEdits[asset.id] ?? {
+      reference: asset.reference ?? '',
+      contentSha256: asset.contentSha256 ?? '',
+    };
+    if (
+      ['ready', 'approved'].includes(nextStatus) &&
+      (!evidence.reference.trim() || !evidence.contentSha256.trim())
+    ) {
+      setLocalError(`Asset ${asset.kind} requires a reference and digest before ${nextStatus}.`);
       return;
     }
     setLocalError(null);
@@ -109,8 +165,8 @@ export function SubmissionPanel({
       kind: asset.kind,
       required: asset.required,
       status: nextStatus,
-      reference: asset.reference,
-      contentSha256: asset.contentSha256,
+      reference: evidence.reference.trim() || null,
+      contentSha256: evidence.contentSha256.trim() || null,
       ...(reviewDecision ? { reviewDecision } : {}),
     });
   };
@@ -119,6 +175,12 @@ export function SubmissionPanel({
     setLocalError(null);
     if (!receiptAssetId) {
       setLocalError('Record and approve the external portal receipt before submission state.');
+      return;
+    }
+    if (!portalUrl.trim() || !repositoryCommitSha.trim() || !submissionDigest.trim()) {
+      setLocalError(
+        'Portal URL, verified repository commit and submission content digest are required.',
+      );
       return;
     }
     await onSaveSubmission({
@@ -147,47 +209,87 @@ export function SubmissionPanel({
       className="hackathon-entry-section"
     >
       <div className="hackathon-asset-list">
-        {entry.assets.map((asset) => (
-          <article className="hackathon-asset" key={asset.id}>
-            <div>
-              <FileCheck2 aria-hidden="true" />
-              <span>
-                <strong>{titleCase(asset.kind)}</strong>
-                <small>{asset.required ? 'Required' : 'Optional'} · {titleCase(asset.founderReviewState)}</small>
-              </span>
-            </div>
-            <Badge tone={assetTone(asset.status)}>{titleCase(asset.status)}</Badge>
-            <code>{asset.reference ?? 'No reference'}</code>
-            <code>{asset.contentSha256 ?? 'No content digest'}</code>
-            <div className="hackathon-entry-inline-actions">
-              <Button
-                size="small"
-                tone="quiet"
-                disabled={busy || asset.status === 'ready' || asset.status === 'approved'}
-                onClick={() => void mutateExistingAsset(asset, 'ready')}
-              >
-                Mark ready
-              </Button>
-              <Button
-                size="small"
-                disabled={busy || asset.status === 'approved' || !asset.reference || !asset.contentSha256}
-                icon={<Check aria-hidden="true" />}
-                onClick={() => void mutateExistingAsset(asset, 'approved', 'accept')}
-              >
-                Approve exact asset
-              </Button>
-              <Button
-                size="small"
-                tone="danger"
-                disabled={busy || asset.status === 'rejected'}
-                icon={<X aria-hidden="true" />}
-                onClick={() => void mutateExistingAsset(asset, 'rejected', 'reject')}
-              >
-                Reject asset
-              </Button>
-            </div>
-          </article>
-        ))}
+        {entry.assets.map((asset) => {
+          const evidence = assetEdits[asset.id] ?? {
+            reference: asset.reference ?? '',
+            contentSha256: asset.contentSha256 ?? '',
+          };
+          const locked = asset.founderReviewState !== 'pending';
+          return (
+            <article className="hackathon-asset" key={asset.id}>
+              <div>
+                <FileCheck2 aria-hidden="true" />
+                <span>
+                  <strong>{titleCase(asset.kind)}</strong>
+                  <small>
+                    {asset.required ? 'Required' : 'Optional'} ·{' '}
+                    {titleCase(asset.founderReviewState)}
+                  </small>
+                </span>
+              </div>
+              <Badge tone={assetTone(asset.status)}>{titleCase(asset.status)}</Badge>
+              <div className="hackathon-asset__evidence">
+                <TextField
+                  label={`${titleCase(asset.kind)} reference`}
+                  value={evidence.reference}
+                  disabled={locked || busy}
+                  onChange={(event) =>
+                    updateAssetEvidence(asset.id, 'reference', event.target.value)
+                  }
+                />
+                <TextField
+                  label={`${titleCase(asset.kind)} SHA-256`}
+                  value={evidence.contentSha256}
+                  disabled={locked || busy}
+                  className="mono"
+                  onChange={(event) =>
+                    updateAssetEvidence(asset.id, 'contentSha256', event.target.value)
+                  }
+                />
+              </div>
+              <div className="hackathon-entry-inline-actions">
+                <Button
+                  size="small"
+                  tone="quiet"
+                  disabled={busy || locked}
+                  onClick={() => void mutateExistingAsset(asset, 'draft')}
+                >
+                  Save draft evidence
+                </Button>
+                <Button
+                  size="small"
+                  tone="quiet"
+                  disabled={busy || locked}
+                  onClick={() => void mutateExistingAsset(asset, 'ready')}
+                >
+                  Mark ready
+                </Button>
+                <Button
+                  size="small"
+                  disabled={
+                    busy ||
+                    locked ||
+                    !evidence.reference.trim() ||
+                    !evidence.contentSha256.trim()
+                  }
+                  icon={<Check aria-hidden="true" />}
+                  onClick={() => void mutateExistingAsset(asset, 'approved', 'accept')}
+                >
+                  Approve exact asset
+                </Button>
+                <Button
+                  size="small"
+                  tone="danger"
+                  disabled={busy || locked}
+                  icon={<X aria-hidden="true" />}
+                  onClick={() => void mutateExistingAsset(asset, 'rejected', 'reject')}
+                >
+                  Reject asset
+                </Button>
+              </div>
+            </article>
+          );
+        })}
       </div>
 
       <div className="hackathon-entry-split">
@@ -202,24 +304,58 @@ export function SubmissionPanel({
           <div className="hackathon-entry-form-grid">
             <label className="field">
               <span className="field__label">Asset kind</span>
-              <select className="select" value={kind} onChange={(event) => setKind(event.target.value as typeof kind)}>
-                {ASSET_KINDS.map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}
+              <select
+                className="select"
+                value={kind}
+                onChange={(event) => setKind(event.target.value as typeof kind)}
+              >
+                {ASSET_KINDS.map((value) => (
+                  <option key={value} value={value}>
+                    {titleCase(value)}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="field">
               <span className="field__label">Asset state</span>
-              <select className="select" value={status} onChange={(event) => setStatus(event.target.value as typeof status)}>
-                {['missing', 'draft', 'ready', 'approved'].map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}
+              <select
+                className="select"
+                value={status}
+                onChange={(event) => setStatus(event.target.value as typeof status)}
+              >
+                {['missing', 'draft', 'ready', 'approved'].map((value) => (
+                  <option key={value} value={value}>
+                    {titleCase(value)}
+                  </option>
+                ))}
               </select>
             </label>
-            <TextField label="Reference" value={reference} onChange={(event) => setReference(event.target.value)} />
-            <TextField label="Content SHA-256" value={contentSha256} onChange={(event) => setContentSha256(event.target.value)} className="mono" />
+            <TextField
+              label="Reference"
+              value={reference}
+              onChange={(event) => setReference(event.target.value)}
+            />
+            <TextField
+              label="Content SHA-256"
+              value={contentSha256}
+              onChange={(event) => setContentSha256(event.target.value)}
+              className="mono"
+            />
           </div>
           <label className="check-row">
-            <input type="checkbox" checked={required} onChange={(event) => setRequired(event.target.checked)} />
-            <span><strong>Required for readiness</strong><small>Every required asset must be founder-approved.</small></span>
+            <input
+              type="checkbox"
+              checked={required}
+              onChange={(event) => setRequired(event.target.checked)}
+            />
+            <span>
+              <strong>Required for readiness</strong>
+              <small>Every required asset must be founder-approved.</small>
+            </span>
           </label>
-          <Button type="submit" icon={<Plus aria-hidden="true" />} loading={busy}>Save asset</Button>
+          <Button type="submit" icon={<Plus aria-hidden="true" />} loading={busy}>
+            Save asset
+          </Button>
         </form>
 
         <form
@@ -230,28 +366,76 @@ export function SubmissionPanel({
           }}
         >
           <h3>Record manual portal submission</h3>
-          <TextField label="Portal URL" value={portalUrl} onChange={(event) => setPortalUrl(event.target.value)} />
-          <TextField label="Submitted repository commit" value={repositoryCommitSha} onChange={(event) => setRepositoryCommitSha(event.target.value)} className="mono" />
-          <TextField label="Submission content SHA-256" value={submissionDigest} onChange={(event) => setSubmissionDigest(event.target.value)} className="mono" />
-          <TextField label="Submitted at" value={submittedAt} onChange={(event) => setSubmittedAt(event.target.value)} placeholder="ISO 8601 or blank for current time" />
+          <TextField
+            label="Portal URL"
+            value={portalUrl}
+            onChange={(event) => setPortalUrl(event.target.value)}
+          />
+          <TextField
+            label="Submitted repository commit"
+            value={repositoryCommitSha}
+            onChange={(event) => setRepositoryCommitSha(event.target.value)}
+            className="mono"
+          />
+          <TextField
+            label="Submission content SHA-256"
+            value={submissionDigest}
+            onChange={(event) => setSubmissionDigest(event.target.value)}
+            className="mono"
+          />
+          <TextField
+            label="Submitted at"
+            value={submittedAt}
+            onChange={(event) => setSubmittedAt(event.target.value)}
+            placeholder="ISO 8601 or blank for current time"
+          />
           <label className="field">
             <span className="field__label">Approved receipt asset</span>
-            <select className="select" value={receiptAssetId} onChange={(event) => setReceiptAssetId(event.target.value)}>
+            <select
+              className="select"
+              value={receiptAssetId}
+              onChange={(event) => setReceiptAssetId(event.target.value)}
+            >
               <option value="">Select approved receipt</option>
-              {receiptAssets.map((asset) => <option key={asset.id} value={asset.id}>{asset.reference ?? asset.id}</option>)}
+              {receiptAssets.map((asset) => (
+                <option key={asset.id} value={asset.id}>
+                  {asset.reference ?? asset.id}
+                </option>
+              ))}
             </select>
           </label>
           <label className="field">
             <span className="field__label">Submission status</span>
-            <select className="select" value={submissionStatus} onChange={(event) => setSubmissionStatus(event.target.value as typeof submissionStatus)}>
-              {['submitted', 'accepted', 'rejected', 'withdrawn'].map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}
+            <select
+              className="select"
+              value={submissionStatus}
+              onChange={(event) =>
+                setSubmissionStatus(event.target.value as typeof submissionStatus)
+              }
+            >
+              {['submitted', 'accepted', 'rejected', 'withdrawn'].map((value) => (
+                <option key={value} value={value}>
+                  {titleCase(value)}
+                </option>
+              ))}
             </select>
           </label>
           <dl className="hackathon-entry-facts">
-            <div><dt>Narrative</dt><dd>{entry.narrativeProfileId}</dd></div>
-            <div><dt>Demo</dt><dd>{entry.canonicalDemoVersionId}</dd></div>
+            <div>
+              <dt>Narrative</dt>
+              <dd>{entry.narrativeProfileId}</dd>
+            </div>
+            <div>
+              <dt>Demo</dt>
+              <dd>{entry.canonicalDemoVersionId}</dd>
+            </div>
           </dl>
-          <Button type="submit" tone="primary" icon={<Save aria-hidden="true" />} loading={busy}>
+          <Button
+            type="submit"
+            tone="primary"
+            icon={<Save aria-hidden="true" />}
+            loading={busy}
+          >
             Record manual submission
           </Button>
         </form>
