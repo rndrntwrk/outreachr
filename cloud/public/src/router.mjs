@@ -1,3 +1,5 @@
+import { emitPublicCostPoint } from './cost-metrics.mjs';
+
 const SERVICE_NAME = 'outreachr-public';
 const ALLOWED_METHODS = new Set(['GET', 'HEAD']);
 const RELEASE_CHANNELS = new Set(['dev', 'staging', 'stable']);
@@ -22,11 +24,17 @@ function requestId() {
   return globalThis.crypto?.randomUUID?.() ?? '00000000-0000-4000-8000-000000000000';
 }
 
+function nowMs() {
+  return globalThis.performance?.now?.() ?? Date.now();
+}
+
 function jsonResponse(value, status = 200, headers = {}) {
-  return new Response(JSON.stringify(value), {
+  const body = JSON.stringify(value);
+  return new Response(body, {
     status,
     headers: {
       'content-type': 'application/json',
+      'content-length': String(new TextEncoder().encode(body).byteLength),
       ...headers,
     },
   });
@@ -158,13 +166,34 @@ function attachmentName(key) {
   return value.replace(/[^A-Za-z0-9._-]/gu, '_');
 }
 
+function responseBytes(response) {
+  const header = response.headers.get('content-length');
+  if (header === null) return -1;
+  const parsed = Number(header);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : -1;
+}
+
+function recordCost(env, startedAt, method, routeClass, storageReadOperations, response) {
+  emitPublicCostPoint(env, {
+    routeClass,
+    method,
+    status: response.status,
+    responseBytes: responseBytes(response),
+    storageReadOperations,
+    handlerWallMs: Math.max(0, nowMs() - startedAt),
+    environment: env.ENVIRONMENT ?? 'development',
+    version: env.CF_VERSION_METADATA?.id ?? env.SERVICE_VERSION ?? 'development',
+  });
+}
+
 export async function routePublicRequest(request, env = {}) {
+  const startedAt = nowMs();
   const id = requestId();
   const method = request.method?.toUpperCase?.() ?? 'GET';
   const headOnly = method === 'HEAD';
 
   if (!ALLOWED_METHODS.has(method)) {
-    return finalize(
+    const response = finalize(
       jsonResponse({ error: 'method_not_allowed' }, 405, {
         allow: 'GET, HEAD',
         'cache-control': 'no-store',
@@ -172,17 +201,26 @@ export async function routePublicRequest(request, env = {}) {
       id,
       false,
     );
+    recordCost(env, startedAt, method, 'method_not_allowed', 0, response);
+    return response;
   }
 
   const url = new URL(request.url);
   const pathname = url.pathname;
   let response;
+  let routeClass = 'not_found';
+  let storageReadOperations = 0;
 
   if (pathname === '/health/live') {
+    routeClass = 'health_live';
     response = jsonResponse(serviceIdentity(env), 200, { 'cache-control': 'no-store' });
   } else if (pathname === '/health/ready') {
+    routeClass = 'health_ready';
+    storageReadOperations = env.PUBLIC_ARTIFACTS ? 2 : 0;
     response = await readinessResponse(env);
   } else if (pathname === '/api/v1/atlas/index') {
+    routeClass = 'atlas_index';
+    storageReadOperations = env.PUBLIC_ARTIFACTS ? 1 : 0;
     response = await r2ObjectResponse(
       env.PUBLIC_ARTIFACTS,
       READY_OBJECTS.atlasIndex,
@@ -192,31 +230,42 @@ export async function routePublicRequest(request, env = {}) {
   } else {
     const release = parseReleaseCoordinate(pathname);
     if (release) {
-      response = release.valid
-        ? await r2ObjectResponse(
-            env.PUBLIC_ARTIFACTS,
-            `releases/manifests/${release.channel}/${release.platform}/${release.architecture}.json`,
-            method,
-            'public, max-age=60',
-          )
-        : jsonResponse({ error: 'invalid_release_coordinate' }, 400, {
-            'cache-control': 'no-store',
-          });
+      if (release.valid) {
+        routeClass = 'release_manifest';
+        storageReadOperations = env.PUBLIC_ARTIFACTS ? 1 : 0;
+        response = await r2ObjectResponse(
+          env.PUBLIC_ARTIFACTS,
+          `releases/manifests/${release.channel}/${release.platform}/${release.architecture}.json`,
+          method,
+          'public, max-age=60',
+        );
+      } else {
+        routeClass = 'invalid_release_coordinate';
+        response = jsonResponse({ error: 'invalid_release_coordinate' }, 400, {
+          'cache-control': 'no-store',
+        });
+      }
     } else {
       const artifact = parseArtifactKey(pathname);
       if (artifact) {
-        response = artifact.valid
-          ? await r2ObjectResponse(
-              env.PUBLIC_ARTIFACTS,
-              `releases/artifacts/${artifact.key}`,
-              method,
-              'public, max-age=31536000, immutable',
-              `attachment; filename="${attachmentName(artifact.key)}"`,
-            )
-          : jsonResponse({ error: 'invalid_artifact_key' }, 400, {
-              'cache-control': 'no-store',
-            });
+        if (artifact.valid) {
+          routeClass = 'release_artifact';
+          storageReadOperations = env.PUBLIC_ARTIFACTS ? 1 : 0;
+          response = await r2ObjectResponse(
+            env.PUBLIC_ARTIFACTS,
+            `releases/artifacts/${artifact.key}`,
+            method,
+            'public, max-age=31536000, immutable',
+            `attachment; filename="${attachmentName(artifact.key)}"`,
+          );
+        } else {
+          routeClass = 'invalid_artifact_key';
+          response = jsonResponse({ error: 'invalid_artifact_key' }, 400, {
+            'cache-control': 'no-store',
+          });
+        }
       } else if (env.ASSETS && typeof env.ASSETS.fetch === 'function') {
+        routeClass = 'static_asset';
         response = await env.ASSETS.fetch(request);
       } else {
         response = jsonResponse({ error: 'not_found' }, 404, {
@@ -226,5 +275,7 @@ export async function routePublicRequest(request, env = {}) {
     }
   }
 
-  return finalize(response, id, headOnly);
+  const finalized = finalize(response, id, headOnly);
+  recordCost(env, startedAt, method, routeClass, storageReadOperations, finalized);
+  return finalized;
 }
