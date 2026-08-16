@@ -3,20 +3,46 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Not found · Outreachr</title>
+    <title>Route not found · Outreachr</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Outreachr home">Outreachr</a>
+      <span>HTTP 404</span>
+    </header>
     <main>
-      <p class="eyebrow">404</p>
-      <h1>This public resource does not exist.</h1>
-      <p class="lede">
-        The founder’s private workspace is local and is never available from this public edge.
-      </p>
-      <nav aria-label="Recovery links">
-        <a href="/">Return to Outreachr</a>
-        <a href="/health/live">Check service health</a>
+      <section class="hero" aria-labelledby="page-title">
+        <div>
+          <h1 id="page-title">Route resolution: not found.</h1>
+          <p>
+            The public Worker found no API route or static asset for this path. The request terminates
+            without access to a founder device, private vault, credential, or application record.
+          </p>
+        </div>
+        <dl class="hero-facts">
+          <div>
+            <dt>Route class</dt>
+            <dd>not_found</dd>
+          </div>
+          <div>
+            <dt>Storage reads</dt>
+            <dd>0</dd>
+          </div>
+          <div>
+            <dt>Cache</dt>
+            <dd>no-store</dd>
+          </div>
+        </dl>
+      </section>
+      <nav class="resource-nav" aria-label="Recovery links">
+        <a href="/">Return to architecture</a>
+        <a href="/health/live">Liveness</a>
+        <a href="/health/ready">Readiness</a>
       </nav>
     </main>
+    <footer>
+      <p>Public route only · local founder authority remains unreachable</p>
+    </footer>
   </body>
 </html>
