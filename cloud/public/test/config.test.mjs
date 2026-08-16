@@ -7,12 +7,8 @@ const config = JSON.parse(
 );
 
 test('public Worker uses bounded CPU and subrequest ceilings', () => {
-  assert.equal(Number.isInteger(config.limits?.cpu_ms), true);
-  assert.equal(config.limits.cpu_ms > 0, true);
-  assert.equal(config.limits.cpu_ms <= 50, true);
-  assert.equal(Number.isInteger(config.limits?.subrequests), true);
-  assert.equal(config.limits.subrequests > 0, true);
-  assert.equal(config.limits.subrequests <= 8, true);
+  assert.equal(config.limits?.cpu_ms, 10);
+  assert.equal(config.limits?.subrequests, 8);
 });
 
 test('public Worker binds immutable version metadata and isolated cost datasets', () => {
