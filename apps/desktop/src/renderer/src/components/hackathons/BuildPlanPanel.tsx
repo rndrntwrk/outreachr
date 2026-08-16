@@ -5,6 +5,10 @@ import type { HackathonBuildSaveInput } from '../../../../shared/hackathon-contr
 import { Badge, Button, Section, TextField, titleCase } from '../ui';
 import type { HackathonEntryWorkspaceDetail } from './entry-model';
 
+const GIT_SHA_PATTERN = /^[a-f0-9]{40}$/u;
+const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
+const SHELL_SAFE_ARGUMENT = /^[A-Za-z0-9_./:@+-]+$/u;
+
 function valueOrEmpty(value: string | null | undefined): string {
   return value ?? '';
 }
@@ -16,10 +20,17 @@ function numberOrNull(value: string): number | null {
 }
 
 function worktreeSlug(entryId: string): string {
-  return entryId
-    .replace(/^entry:/u, '')
-    .replace(/[^a-zA-Z0-9._-]+/gu, '-')
-    .replace(/^-+|-+$/gu, '') || 'entry';
+  return (
+    entryId
+      .replace(/^entry:/u, '')
+      .replace(/[^a-zA-Z0-9._-]+/gu, '-')
+      .replace(/^-+|-+$/gu, '') || 'entry'
+  );
+}
+
+function shellArgument(value: string): string {
+  if (SHELL_SAFE_ARGUMENT.test(value)) return value;
+  return `'${value.replaceAll("'", `'\\''`)}'`;
 }
 
 export function BuildPlanPanel({
@@ -44,7 +55,14 @@ export function BuildPlanPanel({
   const [adapterPath, setAdapterPath] = useState(valueOrEmpty(build?.adapterPath));
   const [ownerAgent, setOwnerAgent] = useState(valueOrEmpty(build?.ownerAgent));
   const [toolPolicy, setToolPolicy] = useState(
-    JSON.stringify(build?.toolPolicy ?? { allow: ['read', 'test'], deny: ['send', 'publish', 'merge'] }, null, 2),
+    JSON.stringify(
+      build?.toolPolicy ?? {
+        allow: ['read', 'test'],
+        deny: ['send', 'publish', 'merge'],
+      },
+      null,
+      2,
+    ),
   );
   const [budgetUsd, setBudgetUsd] = useState(build?.budgetUsd?.toString() ?? '');
   const [budgetHours, setBudgetHours] = useState(build?.budgetHours?.toString() ?? '');
@@ -93,10 +111,11 @@ export function BuildPlanPanel({
   }, [build]);
 
   const worktreeCommand = useMemo(() => {
-    const directory = worktreeReference.trim() || `../outreachr-hack-${worktreeSlug(entry.id)}`;
+    const directory =
+      worktreeReference.trim() || `../outreachr-hack-${worktreeSlug(entry.id)}`;
     const branch = branchName.trim() || `hack/${worktreeSlug(entry.id)}`;
     const sha = baseCommitSha.trim() || '<approved-base-sha>';
-    return `git worktree add ${directory} -b ${branch} ${sha}`;
+    return `git worktree add ${shellArgument(directory)} -b ${shellArgument(branch)} ${shellArgument(sha)}`;
   }, [baseCommitSha, branchName, entry.id, worktreeReference]);
 
   const save = async (): Promise<void> => {
@@ -112,11 +131,41 @@ export function BuildPlanPanel({
       setLocalError(error instanceof Error ? error.message : 'Tool policy is invalid JSON.');
       return;
     }
+
     const hours = numberOrNull(budgetHours);
+    const usd = numberOrNull(budgetUsd);
+    if (!repository.trim() || !branchName.trim()) {
+      setLocalError('Repository and isolated branch are required.');
+      return;
+    }
+    if (!GIT_SHA_PATTERN.test(baseCommitSha.trim())) {
+      setLocalError('Base commit must be an exact 40-character lowercase Git SHA.');
+      return;
+    }
+    if (budgetUsd.trim() && usd === null) {
+      setLocalError('Budget USD must be a non-negative number.');
+      return;
+    }
     if (budgetHours.trim() && (hours === null || !Number.isInteger(hours) || hours < 1)) {
       setLocalError('Budget hours must be a positive integer.');
       return;
     }
+    if (!startConditions.trim() || !stopConditions.trim()) {
+      setLocalError('Start and stop conditions are required.');
+      return;
+    }
+    if (currentCommitSha.trim() && !GIT_SHA_PATTERN.test(currentCommitSha.trim())) {
+      setLocalError('Current commit must be an exact 40-character lowercase Git SHA.');
+      return;
+    }
+    if (
+      evidenceManifestSha256.trim() &&
+      !SHA256_PATTERN.test(evidenceManifestSha256.trim())
+    ) {
+      setLocalError('Evidence manifest must be an exact 64-character lowercase SHA-256.');
+      return;
+    }
+
     await onSave({
       ...(build ? { id: build.id } : {}),
       entryId: entry.id,
@@ -128,7 +177,7 @@ export function BuildPlanPanel({
       adapterPath: adapterPath.trim() || null,
       ownerAgent: ownerAgent.trim() || null,
       toolPolicy: parsedPolicy,
-      budgetUsd: numberOrNull(budgetUsd),
+      budgetUsd: usd,
       budgetHours: hours,
       startConditions: startConditions.trim(),
       stopConditions: stopConditions.trim(),
@@ -147,7 +196,13 @@ export function BuildPlanPanel({
       title="Build envelope"
       description="The build record binds source identity, execution budget, approved tools, stop conditions, verification evidence and the founder merge decision."
       action={
-        <Badge tone={build && ['approved', 'active', 'completed'].includes(build.status) ? 'success' : 'warning'}>
+        <Badge
+          tone={
+            build && ['approved', 'active', 'completed'].includes(build.status)
+              ? 'success'
+              : 'warning'
+          }
+        >
           {build ? titleCase(build.status) : 'No build record'}
         </Badge>
       }
@@ -164,64 +219,167 @@ export function BuildPlanPanel({
           <div className="hackathon-entry-form-grid">
             <label className="field">
               <span className="field__label">Build state</span>
-              <select className="select" value={status} onChange={(event) => setStatus(event.target.value as typeof status)}>
+              <select
+                className="select"
+                value={status}
+                onChange={(event) => setStatus(event.target.value as typeof status)}
+              >
                 {['draft', 'approved', 'active', 'completed', 'cancelled'].map((value) => (
-                  <option key={value} value={value}>{titleCase(value)}</option>
+                  <option key={value} value={value}>
+                    {titleCase(value)}
+                  </option>
                 ))}
               </select>
             </label>
-            <TextField label="Repository" value={repository} onChange={(event) => setRepository(event.target.value)} />
-            <TextField label="Base commit SHA" value={baseCommitSha} onChange={(event) => setBaseCommitSha(event.target.value)} className="mono" />
-            <TextField label="Branch" value={branchName} onChange={(event) => setBranchName(event.target.value)} />
-            <TextField label="Worktree reference" value={worktreeReference} onChange={(event) => setWorktreeReference(event.target.value)} />
-            <TextField label="Adapter path" value={adapterPath} onChange={(event) => setAdapterPath(event.target.value)} />
-            <TextField label="Owner agent" value={ownerAgent} onChange={(event) => setOwnerAgent(event.target.value)} />
-            <TextField label="Budget USD" type="number" min="0" value={budgetUsd} onChange={(event) => setBudgetUsd(event.target.value)} />
-            <TextField label="Budget hours" type="number" min="1" step="1" value={budgetHours} onChange={(event) => setBudgetHours(event.target.value)} />
+            <TextField
+              label="Repository"
+              value={repository}
+              onChange={(event) => setRepository(event.target.value)}
+            />
+            <TextField
+              label="Base commit SHA"
+              value={baseCommitSha}
+              onChange={(event) => setBaseCommitSha(event.target.value)}
+              className="mono"
+            />
+            <TextField
+              label="Branch"
+              value={branchName}
+              onChange={(event) => setBranchName(event.target.value)}
+            />
+            <TextField
+              label="Worktree reference"
+              value={worktreeReference}
+              onChange={(event) => setWorktreeReference(event.target.value)}
+            />
+            <TextField
+              label="Adapter path"
+              value={adapterPath}
+              onChange={(event) => setAdapterPath(event.target.value)}
+            />
+            <TextField
+              label="Owner agent"
+              value={ownerAgent}
+              onChange={(event) => setOwnerAgent(event.target.value)}
+            />
+            <TextField
+              label="Budget USD"
+              type="number"
+              min="0"
+              value={budgetUsd}
+              onChange={(event) => setBudgetUsd(event.target.value)}
+            />
+            <TextField
+              label="Budget hours"
+              type="number"
+              min="1"
+              step="1"
+              value={budgetHours}
+              onChange={(event) => setBudgetHours(event.target.value)}
+            />
             <label className="field">
               <span className="field__label">CI state</span>
-              <select className="select" value={ciState} onChange={(event) => setCiState(event.target.value as typeof ciState)}>
+              <select
+                className="select"
+                value={ciState}
+                onChange={(event) => setCiState(event.target.value as typeof ciState)}
+              >
                 {['not_run', 'running', 'passed', 'failed', 'blocked'].map((value) => (
-                  <option key={value} value={value}>{titleCase(value)}</option>
+                  <option key={value} value={value}>
+                    {titleCase(value)}
+                  </option>
                 ))}
               </select>
             </label>
             <label className="field">
               <span className="field__label">Security review</span>
-              <select className="select" value={securityReviewState} onChange={(event) => setSecurityReviewState(event.target.value as typeof securityReviewState)}>
+              <select
+                className="select"
+                value={securityReviewState}
+                onChange={(event) =>
+                  setSecurityReviewState(event.target.value as typeof securityReviewState)
+                }
+              >
                 {['pending', 'passed', 'failed', 'not_required'].map((value) => (
-                  <option key={value} value={value}>{titleCase(value)}</option>
+                  <option key={value} value={value}>
+                    {titleCase(value)}
+                  </option>
                 ))}
               </select>
             </label>
             <label className="field">
               <span className="field__label">Merge decision</span>
-              <select className="select" value={mergeDecision} onChange={(event) => setMergeDecision(event.target.value as typeof mergeDecision)}>
+              <select
+                className="select"
+                value={mergeDecision}
+                onChange={(event) =>
+                  setMergeDecision(event.target.value as typeof mergeDecision)
+                }
+              >
                 {['pending', 'merge', 'do_not_merge', 'superseded'].map((value) => (
-                  <option key={value} value={value}>{titleCase(value)}</option>
+                  <option key={value} value={value}>
+                    {titleCase(value)}
+                  </option>
                 ))}
               </select>
             </label>
-            <TextField label="Current commit SHA" value={currentCommitSha} onChange={(event) => setCurrentCommitSha(event.target.value)} className="mono" />
-            <TextField label="Evidence manifest SHA-256" value={evidenceManifestSha256} onChange={(event) => setEvidenceManifestSha256(event.target.value)} className="mono" />
-            <TextField label="Started at" value={startedAt} onChange={(event) => setStartedAt(event.target.value)} placeholder="ISO 8601 or blank" />
-            <TextField label="Completed at" value={completedAt} onChange={(event) => setCompletedAt(event.target.value)} placeholder="ISO 8601 or blank" />
+            <TextField
+              label="Current commit SHA"
+              value={currentCommitSha}
+              onChange={(event) => setCurrentCommitSha(event.target.value)}
+              className="mono"
+            />
+            <TextField
+              label="Evidence manifest SHA-256"
+              value={evidenceManifestSha256}
+              onChange={(event) => setEvidenceManifestSha256(event.target.value)}
+              className="mono"
+            />
+            <TextField
+              label="Started at"
+              value={startedAt}
+              onChange={(event) => setStartedAt(event.target.value)}
+              placeholder="ISO 8601 or blank"
+            />
+            <TextField
+              label="Completed at"
+              value={completedAt}
+              onChange={(event) => setCompletedAt(event.target.value)}
+              placeholder="ISO 8601 or blank"
+            />
           </div>
 
           <label className="field">
             <span className="field__label">Approved tool policy JSON</span>
-            <textarea className="textarea mono" value={toolPolicy} onChange={(event) => setToolPolicy(event.target.value)} />
+            <textarea
+              className="textarea mono"
+              value={toolPolicy}
+              onChange={(event) => setToolPolicy(event.target.value)}
+            />
           </label>
           <label className="field">
             <span className="field__label">Start conditions</span>
-            <textarea className="textarea" value={startConditions} onChange={(event) => setStartConditions(event.target.value)} />
+            <textarea
+              className="textarea"
+              value={startConditions}
+              onChange={(event) => setStartConditions(event.target.value)}
+            />
           </label>
           <label className="field">
             <span className="field__label">Stop conditions</span>
-            <textarea className="textarea" value={stopConditions} onChange={(event) => setStopConditions(event.target.value)} />
+            <textarea
+              className="textarea"
+              value={stopConditions}
+              onChange={(event) => setStopConditions(event.target.value)}
+            />
           </label>
           {localError ? <p className="field__error">{localError}</p> : null}
-          <Button type="submit" tone="primary" loading={busy} icon={<Save aria-hidden="true" />}>
+          <Button
+            type="submit"
+            tone="primary"
+            loading={busy}
+            icon={<Save aria-hidden="true" />}
+          >
             Save build envelope
           </Button>
         </form>
@@ -233,7 +391,8 @@ export function BuildPlanPanel({
           </span>
           <code aria-label="Worktree command">{worktreeCommand}</code>
           <p>
-            Outreachr stores and copies this command. Git, the worktree, CI, security review and merge remain outside the desktop command surface.
+            Outreachr stores and copies this command. Git, the worktree, CI, security review and
+            merge remain outside the desktop command surface.
           </p>
           <Button
             size="small"
