@@ -5,6 +5,13 @@
   "compatibility_date": "2026-08-15",
   "workers_dev": true,
   "preview_urls": true,
+  "limits": {
+    "cpu_ms": 50,
+    "subrequests": 8
+  },
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA"
+  },
   "observability": {
     "enabled": true,
     "head_sampling_rate": 0.05
@@ -19,6 +26,12 @@
     {
       "binding": "PUBLIC_ARTIFACTS",
       "bucket_name": "outreachr-public-artifacts-dev"
+    }
+  ],
+  "analytics_engine_datasets": [
+    {
+      "binding": "COST_METRICS",
+      "dataset": "outreachr_public_cost_dev"
     }
   ],
   "vars": {
@@ -36,6 +49,12 @@
           "bucket_name": "outreachr-public-artifacts-staging"
         }
       ],
+      "analytics_engine_datasets": [
+        {
+          "binding": "COST_METRICS",
+          "dataset": "outreachr_public_cost_staging"
+        }
+      ],
       "vars": {
         "ENVIRONMENT": "staging",
         "SERVICE_VERSION": "staging-unversioned"
@@ -49,6 +68,12 @@
         {
           "binding": "PUBLIC_ARTIFACTS",
           "bucket_name": "outreachr-public-artifacts-prod"
+        }
+      ],
+      "analytics_engine_datasets": [
+        {
+          "binding": "COST_METRICS",
+          "dataset": "outreachr_public_cost_prod"
         }
       ],
       "vars": {
