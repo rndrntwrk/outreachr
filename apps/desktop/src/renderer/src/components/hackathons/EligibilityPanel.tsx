@@ -12,7 +12,7 @@ function statusTone(status: string): 'success' | 'warning' | 'danger' | 'neutral
 
 function readableValue(value: unknown): string {
   if (typeof value === 'string') return value;
-  return JSON.stringify(value, null, 2);
+  return JSON.stringify(value, null, 2) ?? 'null';
 }
 
 export function EligibilityPanel({
@@ -31,7 +31,10 @@ export function EligibilityPanel({
   const currentEvaluation = entry.eligibilityEvaluations[0] ?? null;
   const evaluationByRule = new Map(
     (currentEvaluation?.detail ?? [])
-      .filter((value): value is Record<string, unknown> => Boolean(value) && typeof value === 'object')
+      .filter(
+        (value): value is Record<string, unknown> =>
+          Boolean(value) && typeof value === 'object' && !Array.isArray(value),
+      )
       .map((value) => [String(value.ruleId ?? ''), value]),
   );
 
