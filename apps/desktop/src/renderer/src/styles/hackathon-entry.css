@@ -1,0 +1,562 @@
+.hackathon-entry-page {
+  padding-bottom: 5rem;
+}
+
+.hackathon-entry-header-badges,
+.hackathon-entry-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.hackathon-entry-authority {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.hackathon-entry-authority > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  padding: var(--space-4) var(--space-5);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.hackathon-entry-authority > div:nth-child(3n) {
+  border-right: 0;
+}
+
+.hackathon-entry-authority > div:nth-last-child(-n + 3) {
+  border-bottom: 0;
+}
+
+.hackathon-entry-authority span,
+.hackathon-entry-authority small {
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+
+.hackathon-entry-authority strong {
+  overflow: hidden;
+  color: var(--ink-strong);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hackathon-entry-section {
+  padding-block: var(--space-8);
+}
+
+.hackathon-readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.hackathon-readiness-grid > div {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.hackathon-readiness-grid > div:nth-child(4n) {
+  border-right: 0;
+}
+
+.hackathon-readiness-grid > div:nth-last-child(-n + 4) {
+  border-bottom: 0;
+}
+
+.hackathon-readiness-grid svg {
+  width: 17px;
+  height: 17px;
+  color: var(--primary-text);
+}
+
+.hackathon-readiness-grid span {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hackathon-blocker-list {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.hackathon-blocker-list p,
+.hackathon-entry-blocker {
+  margin: 0;
+  padding: 9px 11px;
+  color: var(--warning-ink);
+  background: var(--warning-soft);
+  border-left: 3px solid var(--warning);
+  font-size: var(--text-sm);
+}
+
+.hackathon-entry-complete {
+  margin-top: var(--space-4);
+  padding: 9px 11px;
+  color: var(--success-ink);
+  background: var(--success-soft);
+  border-left: 3px solid var(--success);
+}
+
+.hackathon-entry-scope-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.hackathon-entry-scope-grid > div {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-right: 1px solid var(--border);
+}
+
+.hackathon-entry-scope-grid > div:last-child {
+  border-right: 0;
+}
+
+.hackathon-entry-scope-grid svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  color: var(--primary-text);
+}
+
+.hackathon-entry-scope-grid span,
+.hackathon-asset > div:first-child span,
+.hackathon-distribution-list article span,
+.hackathon-conversion-list article span {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hackathon-entry-scope-grid small,
+.hackathon-asset small,
+.hackathon-distribution-list small,
+.hackathon-conversion-list small {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.hackathon-entry-readout,
+.hackathon-build-layout,
+.hackathon-entry-split {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.hackathon-entry-readout__summary {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto minmax(260px, 1.4fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.hackathon-entry-readout__summary > span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.hackathon-entry-readout__summary svg {
+  width: 18px;
+  height: 18px;
+}
+
+.hackathon-entry-readout__summary > code {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hackathon-rule-list,
+.hackathon-asset-list,
+.hackathon-distribution-list,
+.hackathon-conversion-list {
+  display: grid;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.hackathon-rule {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.hackathon-rule:last-child,
+.hackathon-asset:last-child,
+.hackathon-distribution-list article:last-child,
+.hackathon-conversion-list article:last-child {
+  border-bottom: 0;
+}
+
+.hackathon-rule__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.hackathon-rule__heading h3 {
+  font-size: var(--text-md);
+}
+
+.hackathon-rule__heading p,
+.hackathon-rule > p,
+.hackathon-worktree-panel p,
+.hackathon-entry-empty {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  line-height: 1.55;
+}
+
+.hackathon-rule__heading code,
+.hackathon-rule pre,
+.hackathon-asset code,
+.hackathon-distribution-list code,
+.hackathon-worktree-panel code,
+.hackathon-entry-facts dd,
+.hackathon-transition-review .mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.hackathon-rule__badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.hackathon-rule pre {
+  max-height: 180px;
+  margin: 0;
+  padding: var(--space-3);
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.hackathon-build-layout,
+.hackathon-entry-split {
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+}
+
+.hackathon-entry-form {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.hackathon-entry-form > h3 {
+  font-size: var(--text-lg);
+}
+
+.hackathon-entry-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.hackathon-worktree-panel {
+  display: flex;
+  min-width: 0;
+  align-self: start;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  color: var(--on-primary);
+  background: var(--primary-panel);
+  border-radius: var(--radius-md);
+}
+
+.hackathon-worktree-panel > span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.hackathon-worktree-panel svg {
+  width: 18px;
+  height: 18px;
+}
+
+.hackathon-worktree-panel code {
+  display: block;
+  padding: var(--space-3);
+  color: var(--on-primary);
+  background: color-mix(in oklch, var(--ink-strong) 28%, transparent);
+  border-radius: var(--radius-sm);
+  overflow-wrap: anywhere;
+}
+
+.hackathon-worktree-panel p {
+  color: var(--on-primary-muted);
+}
+
+.hackathon-asset {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.85fr) auto minmax(150px, 1fr) minmax(150px, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.hackathon-asset > div:first-child {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.hackathon-asset svg,
+.hackathon-distribution-list svg,
+.hackathon-conversion-list svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  color: var(--primary-text);
+}
+
+.hackathon-asset code {
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hackathon-entry-facts {
+  margin: 0;
+  border-top: 1px solid var(--border);
+}
+
+.hackathon-entry-facts > div {
+  display: grid;
+  grid-template-columns: 0.7fr 1.3fr;
+  gap: var(--space-3);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.hackathon-entry-facts dt {
+  color: var(--muted);
+}
+
+.hackathon-entry-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.hackathon-phase-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.hackathon-phase-strip > div {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-3) var(--space-4);
+  border-right: 1px solid var(--border);
+}
+
+.hackathon-phase-strip > div:last-child {
+  border-right: 0;
+}
+
+.hackathon-phase-strip span {
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+
+.hackathon-phase-strip .is-complete strong {
+  color: var(--success-ink);
+}
+
+.hackathon-phase-strip .is-missing strong {
+  color: var(--warning-ink);
+}
+
+.hackathon-distribution-list,
+.hackathon-conversion-list {
+  margin-top: var(--space-5);
+}
+
+.hackathon-distribution-list article,
+.hackathon-conversion-list article {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.hackathon-distribution-list code {
+  max-width: 260px;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hackathon-transition-review {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.hackathon-transition-review p {
+  margin: 0;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.hackathon-transition-review p:last-child {
+  border-bottom: 0;
+}
+
+.hackathon-entry-link {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 0;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.hackathon-entry-link:hover strong,
+.hackathon-entry-link:focus-visible strong {
+  color: var(--primary-text);
+}
+
+@media (max-width: 1180px) {
+  .hackathon-entry-authority,
+  .hackathon-readiness-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hackathon-entry-authority > div:nth-child(3n),
+  .hackathon-readiness-grid > div:nth-child(4n) {
+    border-right: 1px solid var(--border);
+  }
+
+  .hackathon-entry-authority > div:nth-child(2n),
+  .hackathon-readiness-grid > div:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .hackathon-entry-authority > div:nth-last-child(-n + 3),
+  .hackathon-readiness-grid > div:nth-last-child(-n + 4) {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hackathon-entry-authority > div:nth-last-child(-n + 2),
+  .hackathon-readiness-grid > div:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+
+  .hackathon-entry-scope-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hackathon-entry-scope-grid > div {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hackathon-entry-scope-grid > div:last-child {
+    border-bottom: 0;
+  }
+
+  .hackathon-entry-readout__summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .hackathon-entry-readout__summary > code,
+  .hackathon-entry-readout__summary .hackathon-entry-inline-actions {
+    grid-column: 1 / -1;
+  }
+
+  .hackathon-asset {
+    grid-template-columns: minmax(180px, 1fr) auto;
+  }
+
+  .hackathon-asset > code,
+  .hackathon-asset > .hackathon-entry-inline-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .hackathon-build-layout,
+  .hackathon-entry-split,
+  .hackathon-entry-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hackathon-phase-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .hackathon-phase-strip > div {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hackathon-phase-strip > div:last-child {
+    border-bottom: 0;
+  }
+}
