@@ -1,0 +1,21 @@
+.hackathon-asset {
+  grid-template-columns: minmax(180px, 1fr) auto;
+  align-items: start;
+}
+
+.hackathon-asset__evidence,
+.hackathon-asset > .hackathon-entry-inline-actions {
+  grid-column: 1 / -1;
+}
+
+.hackathon-asset__evidence {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+  gap: var(--space-3);
+}
+
+@media (max-width: 900px) {
+  .hackathon-asset__evidence {
+    grid-template-columns: 1fr;
+  }
+}

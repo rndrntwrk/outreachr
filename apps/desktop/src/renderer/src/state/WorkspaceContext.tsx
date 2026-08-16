@@ -40,6 +40,11 @@ interface WorkspaceValue {
 
 const WorkspaceContext = createContext<WorkspaceValue | null>(null);
 const reportedCommandFailures = new WeakSet<object>();
+const READ_ONLY_COMMANDS = new Set<StudioCommandName>([
+  'investor.get',
+  'hackathon.entry.get',
+  'search',
+]);
 
 function objectReason(reason: unknown): object | null {
   return (typeof reason === 'object' && reason !== null) || typeof reason === 'function'
@@ -132,29 +137,30 @@ export function WorkspaceProvider({ children }: PropsWithChildren): React.JSX.El
         ) {
           setData(result as StudioAppBootstrap);
         } else if (
-          name.startsWith('task.') ||
-          name.startsWith('meeting.') ||
-          name.startsWith('draft.') ||
-          name.startsWith('source.') ||
-          name.startsWith('investor.') ||
-          name.startsWith('pipeline.') ||
-          name.startsWith('round.') ||
-          name.startsWith('list.') ||
-          name.startsWith('connector.') ||
-          name.startsWith('mail.') ||
-          name.startsWith('communications.') ||
-          name.startsWith('suppression.') ||
-          name.startsWith('person.') ||
-          name.startsWith('agent.') ||
-          name.startsWith('knowledge.') ||
-          name.startsWith('legalEntity.') ||
-          name.startsWith('venture.') ||
-          name.startsWith('narrative.') ||
-          name.startsWith('canonicalDemo.') ||
-          name.startsWith('capitalMandate.') ||
-          name.startsWith('organization.') ||
-          name.startsWith('opportunity.') ||
-          name.startsWith('hackathon.')
+          !READ_ONLY_COMMANDS.has(name) &&
+          (name.startsWith('task.') ||
+            name.startsWith('meeting.') ||
+            name.startsWith('draft.') ||
+            name.startsWith('source.') ||
+            name.startsWith('investor.') ||
+            name.startsWith('pipeline.') ||
+            name.startsWith('round.') ||
+            name.startsWith('list.') ||
+            name.startsWith('connector.') ||
+            name.startsWith('mail.') ||
+            name.startsWith('communications.') ||
+            name.startsWith('suppression.') ||
+            name.startsWith('person.') ||
+            name.startsWith('agent.') ||
+            name.startsWith('knowledge.') ||
+            name.startsWith('legalEntity.') ||
+            name.startsWith('venture.') ||
+            name.startsWith('narrative.') ||
+            name.startsWith('canonicalDemo.') ||
+            name.startsWith('capitalMandate.') ||
+            name.startsWith('organization.') ||
+            name.startsWith('opportunity.') ||
+            name.startsWith('hackathon.'))
         ) {
           await load(true);
         }
