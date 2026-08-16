@@ -6,6 +6,7 @@ import { WorkspaceProvider } from './state/WorkspaceContext';
 import './styles/global.css';
 import './styles/authority.css';
 import './styles/hackathon-studio.css';
+import './styles/hackathon-entry.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
