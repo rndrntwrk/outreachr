@@ -1,0 +1,17 @@
+{
+  "name": "@outreachr/cloud-public",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "dev": "npx --yes wrangler@4.79.0 dev --config wrangler.jsonc",
+    "dry-run": "npx --yes wrangler@4.79.0 deploy --dry-run --config wrangler.jsonc",
+    "upload": "npx --yes wrangler@4.79.0 versions upload --config wrangler.jsonc",
+    "upload:staging": "npx --yes wrangler@4.79.0 versions upload --env staging --config wrangler.jsonc",
+    "upload:production": "npx --yes wrangler@4.79.0 versions upload --env production --config wrangler.jsonc"
+  }
+}

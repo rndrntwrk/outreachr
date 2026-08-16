@@ -1,0 +1,85 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "outreachr-public-dev",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-08-15",
+  "workers_dev": true,
+  "preview_urls": true,
+  "limits": {
+    "cpu_ms": 10,
+    "subrequests": 8
+  },
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.05
+  },
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "not_found_handling": "404-page"
+  },
+  "r2_buckets": [
+    {
+      "binding": "PUBLIC_ARTIFACTS",
+      "bucket_name": "outreachr-public-artifacts-dev"
+    }
+  ],
+  "analytics_engine_datasets": [
+    {
+      "binding": "COST_METRICS",
+      "dataset": "outreachr_public_cost_dev"
+    }
+  ],
+  "vars": {
+    "ENVIRONMENT": "development",
+    "SERVICE_VERSION": "development"
+  },
+  "env": {
+    "staging": {
+      "name": "outreachr-public-staging",
+      "workers_dev": true,
+      "preview_urls": true,
+      "r2_buckets": [
+        {
+          "binding": "PUBLIC_ARTIFACTS",
+          "bucket_name": "outreachr-public-artifacts-staging"
+        }
+      ],
+      "analytics_engine_datasets": [
+        {
+          "binding": "COST_METRICS",
+          "dataset": "outreachr_public_cost_staging"
+        }
+      ],
+      "vars": {
+        "ENVIRONMENT": "staging",
+        "SERVICE_VERSION": "staging-unversioned"
+      }
+    },
+    "production": {
+      "name": "outreachr-public",
+      "workers_dev": false,
+      "preview_urls": false,
+      "r2_buckets": [
+        {
+          "binding": "PUBLIC_ARTIFACTS",
+          "bucket_name": "outreachr-public-artifacts-prod"
+        }
+      ],
+      "analytics_engine_datasets": [
+        {
+          "binding": "COST_METRICS",
+          "dataset": "outreachr_public_cost_prod"
+        }
+      ],
+      "vars": {
+        "ENVIRONMENT": "production",
+        "SERVICE_VERSION": "production-unversioned"
+      }
+    }
+  }
+}
