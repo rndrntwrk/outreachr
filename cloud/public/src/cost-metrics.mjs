@@ -78,6 +78,7 @@ export function buildPublicCostPoint({
   method,
   status,
   responseBytes,
+  storageReadOperations,
   handlerWallMs,
   environment,
   version,
@@ -102,7 +103,7 @@ export function buildPublicCostPoint({
       1,
       status,
       boundedNonNegative(responseBytes, -1),
-      profile.storageReadOperations,
+      boundedNonNegative(storageReadOperations, profile.storageReadOperations),
       boundedNonNegative(handlerWallMs),
     ],
   };
