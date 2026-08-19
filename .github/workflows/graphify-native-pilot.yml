@@ -1,0 +1,384 @@
+name: Graphify native pilot (ephemeral)
+
+on:
+  push:
+    branches:
+      - graphify/native-ef2164f6-20260819
+
+permissions:
+  contents: read
+
+concurrency:
+  group: graphify-native-ef2164f6-20260819
+  cancel-in-progress: false
+
+env:
+  SOURCE_SHA: ef2164f6d4d3916fc3266903e4ad00486b1543f4
+  GRAPHIFY_VERSION: 0.9.46
+  GRAPHIFY_WHEEL_SHA256: 35d854d66884c623a8e25ca059b54744ade91ae17ffc0f79fd39e108a1666b5d
+  GRAPHIFY_QUERY_LOG_DISABLE: "1"
+  GRAPHIFY_MAX_WORKERS: "1"
+  PYTHONHASHSEED: "0"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  NO_COLOR: "1"
+  TZ: UTC
+
+jobs:
+  graphify-native:
+    name: Native Graphify v0.9.46 at frozen source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out the frozen source revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ef2164f6d4d3916fc3266903e4ad00486b1543f4
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Prove source freeze and initialize evidence directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/native-evidence"
+          mkdir -p "$evidence/logs"
+          actual_sha="$(git rev-parse HEAD)"
+          test "$actual_sha" = "$SOURCE_SHA"
+          {
+            echo "repository=$GITHUB_REPOSITORY"
+            echo "source_sha=$actual_sha"
+            echo "source_tree=$(git rev-parse HEAD^{tree})"
+            echo "source_commit_date=$(git show -s --format=%cI HEAD)"
+            echo "workflow_event_sha=$GITHUB_SHA"
+            echo "workflow_ref=$GITHUB_REF"
+            echo "runner_os=$RUNNER_OS"
+            echo "runner_arch=$RUNNER_ARCH"
+          } | tee "$evidence/logs/source-freeze.log"
+          git status --short --branch | tee "$evidence/logs/initial-git-status.log"
+          git submodule status --recursive > "$evidence/logs/submodules.log" 2>&1 || true
+          git lfs ls-files > "$evidence/logs/git-lfs-files.log" 2>&1 || true
+
+      - name: Install and cryptographically verify Graphify
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/native-evidence"
+          venv="$RUNNER_TEMP/graphify-venv"
+          python3 --version | tee "$evidence/logs/python-version.log"
+          python3 -m venv "$venv"
+          source "$venv/bin/activate"
+          python -m pip install --upgrade pip | tee "$evidence/logs/pip-upgrade.log"
+          mkdir -p "$RUNNER_TEMP/graphify-wheel"
+          python -m pip download --no-deps --only-binary=:all: "graphifyy==$GRAPHIFY_VERSION" -d "$RUNNER_TEMP/graphify-wheel" | tee "$evidence/logs/wheel-download.log"
+          wheel="$(find "$RUNNER_TEMP/graphify-wheel" -maxdepth 1 -type f -name 'graphifyy-*.whl' -print -quit)"
+          test -n "$wheel"
+          printf '%s  %s\n' "$GRAPHIFY_WHEEL_SHA256" "$wheel" | sha256sum -c - | tee "$evidence/logs/wheel-sha256.log"
+          cp "$wheel" "$evidence/"
+          python -m pip install "$wheel" | tee "$evidence/logs/graphify-install.log"
+          graphify --version | tee "$evidence/logs/graphify-version.log"
+          python -m pip show graphifyy | tee "$evidence/logs/graphify-package.log"
+          python -m pip freeze | sort > "$evidence/logs/python-environment.freeze.txt"
+          python - <<'PY' > "$evidence/logs/import-proof.log"
+          import graphify
+          import importlib.metadata
+          print(f"graphify_module={graphify.__file__}")
+          print(f"graphifyy_version={importlib.metadata.version('graphifyy')}")
+          PY
+
+      - name: Run native Graphify pass 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/native-evidence"
+          source "$RUNNER_TEMP/graphify-venv/bin/activate"
+          rm -rf graphify-out graph.json
+          { time graphify extract . --code-only --force --timing --max-workers 1; } 2>&1 | tee "$evidence/logs/graphify-pass-1.log"
+          test -s graphify-out/graph.json
+          test -s graphify-out/GRAPH_REPORT.md
+          cp -a graphify-out "$evidence/run-1"
+
+      - name: Run independent native Graphify pass 2
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/native-evidence"
+          source "$RUNNER_TEMP/graphify-venv/bin/activate"
+          rm -rf graphify-out graph.json
+          { time graphify extract . --code-only --force --timing --max-workers 1; } 2>&1 | tee "$evidence/logs/graphify-pass-2.log"
+          test -s graphify-out/graph.json
+          test -s graphify-out/GRAPH_REPORT.md
+          cp -a graphify-out "$evidence/run-2"
+
+      - name: Challenge the native graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/native-evidence"
+          source "$RUNNER_TEMP/graphify-venv/bin/activate"
+          export EVIDENCE_DIR="$evidence"
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          evidence = Path(os.environ["EVIDENCE_DIR"])
+          graph = evidence / "run-2" / "graph.json"
+          questions = [
+              "What is the principal runtime entry point?",
+              "How does renderer code reach privileged behavior?",
+              "Where is primary state persisted?",
+              "What protects OAuth callbacks?",
+              "Can an agent mutate the database directly?",
+              "How is private agent context bounded?",
+              "Which providers are supported for mail and calendar?",
+              "What qualifies a release?",
+              "What is the principal canonicality concern?",
+              "Which cloud database hosts Outreachr production?",
+          ]
+          results = []
+          out_dir = evidence / "queries"
+          out_dir.mkdir(parents=True, exist_ok=True)
+          for index, question in enumerate(questions, 1):
+              proc = subprocess.run(
+                  ["graphify", "query", question, "--graph", str(graph)],
+                  text=True,
+                  capture_output=True,
+                  check=False,
+              )
+              record = {
+                  "id": f"Q{index}",
+                  "question": question,
+                  "returncode": proc.returncode,
+                  "stdout": proc.stdout,
+                  "stderr": proc.stderr,
+              }
+              results.append(record)
+              (out_dir / f"Q{index:02d}.txt").write_text(
+                  f"QUESTION\n{question}\n\nRETURN CODE\n{proc.returncode}\n\nSTDOUT\n{proc.stdout}\n\nSTDERR\n{proc.stderr}\n",
+                  encoding="utf-8",
+              )
+          (evidence / "native-query-results.json").write_text(
+              json.dumps(results, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+          if any(item["returncode"] != 0 for item in results):
+              raise SystemExit("one or more graphify query commands failed")
+          PY
+
+      - name: Compare both native runs and inventory the corpus
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/native-evidence"
+          export EVIDENCE_DIR="$evidence"
+          python - <<'PY'
+          import csv
+          import hashlib
+          import json
+          import os
+          import subprocess
+          from collections import Counter
+          from pathlib import Path
+
+          evidence = Path(os.environ["EVIDENCE_DIR"])
+
+          def sha256(path: Path) -> str:
+              h = hashlib.sha256()
+              with path.open("rb") as stream:
+                  for block in iter(lambda: stream.read(1024 * 1024), b""):
+                      h.update(block)
+              return h.hexdigest()
+
+          def load_graph(path: Path):
+              data = json.loads(path.read_text(encoding="utf-8"))
+              nodes = data.get("nodes", [])
+              edges = data.get("edges", [])
+              if isinstance(nodes, dict):
+                  nodes = list(nodes.values())
+              if isinstance(edges, dict):
+                  edges = list(edges.values())
+              return data, nodes, edges
+
+          volatile = {
+              "generated_at", "created_at", "updated_at", "timestamp", "timing",
+              "duration", "duration_ms", "elapsed", "cost", "run_id",
+          }
+
+          def scrub(value):
+              if isinstance(value, dict):
+                  return {k: scrub(v) for k, v in sorted(value.items()) if k not in volatile}
+              if isinstance(value, list):
+                  return [scrub(v) for v in value]
+              return value
+
+          summaries = []
+          canonical_payloads = []
+          for run_name in ("run-1", "run-2"):
+              graph_path = evidence / run_name / "graph.json"
+              data, nodes, edges = load_graph(graph_path)
+              node_payload = sorted(
+                  (json.dumps(scrub(node), sort_keys=True, separators=(",", ":"), ensure_ascii=False) for node in nodes)
+              )
+              edge_payload = sorted(
+                  (json.dumps(scrub(edge), sort_keys=True, separators=(",", ":"), ensure_ascii=False) for edge in edges)
+              )
+              canonical = json.dumps(
+                  {"nodes": node_payload, "edges": edge_payload},
+                  sort_keys=True,
+                  separators=(",", ":"),
+                  ensure_ascii=False,
+              ).encode("utf-8")
+              canonical_payloads.append(canonical)
+              summaries.append({
+                  "run": run_name,
+                  "graph_json_sha256": sha256(graph_path),
+                  "canonical_structure_sha256": hashlib.sha256(canonical).hexdigest(),
+                  "node_count": len(nodes),
+                  "edge_count": len(edges),
+                  "node_types": dict(sorted(Counter(str(n.get("type", n.get("kind", "unknown"))) for n in nodes).items())),
+                  "edge_relations": dict(sorted(Counter(str(e.get("relation", e.get("type", "unknown"))) for e in edges).items())),
+              })
+
+          comparison = {
+              "runs": summaries,
+              "exact_graph_json_match": summaries[0]["graph_json_sha256"] == summaries[1]["graph_json_sha256"],
+              "canonical_structure_match": canonical_payloads[0] == canonical_payloads[1],
+          }
+          (evidence / "native-determinism.json").write_text(
+              json.dumps(comparison, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+          if not comparison["canonical_structure_match"]:
+              raise SystemExit("native Graphify structural output was not deterministic across two clean runs")
+
+          raw = subprocess.check_output(["git", "ls-files", "-z"])
+          paths = [Path(p.decode("utf-8")) for p in raw.split(b"\0") if p]
+          rows = []
+          for path in paths:
+              stat = path.stat()
+              suffix = path.suffix.lower() or "[none]"
+              rows.append({
+                  "path": path.as_posix(),
+                  "bytes": stat.st_size,
+                  "extension": suffix,
+                  "tracked": "yes",
+              })
+          with (evidence / "tracked-source-inventory.csv").open("w", encoding="utf-8", newline="") as stream:
+              writer = csv.DictWriter(stream, fieldnames=["path", "bytes", "extension", "tracked"])
+              writer.writeheader()
+              writer.writerows(rows)
+          inventory = {
+              "tracked_file_count": len(rows),
+              "tracked_bytes": sum(row["bytes"] for row in rows),
+              "extensions": dict(sorted(Counter(row["extension"] for row in rows).items())),
+          }
+          (evidence / "tracked-source-inventory.json").write_text(
+              json.dumps(inventory, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          git status --short --branch | tee "$evidence/logs/post-graphify-git-status.log"
+
+      - name: Set up the repository's pinned Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22.23.2
+
+      - name: Run repository baseline verification without masking graph evidence
+        shell: bash
+        run: |
+          set -uo pipefail
+          evidence="$RUNNER_TEMP/native-evidence"
+          corepack enable
+          corepack prepare pnpm@11.18.0 --activate
+          pnpm config set store-dir "$RUNNER_TEMP/pnpm-store"
+          install_status=0
+          verify_status=125
+          pnpm install --frozen-lockfile > "$evidence/logs/pnpm-install.log" 2>&1 || install_status=$?
+          if [ "$install_status" -eq 0 ]; then
+            pnpm verify > "$evidence/logs/pnpm-verify.log" 2>&1 || verify_status=$?
+          fi
+          if [ "$install_status" -eq 0 ] && [ "$verify_status" -eq 125 ]; then
+            verify_status=0
+          fi
+          printf '{\n  "pnpm_install_exit_code": %s,\n  "pnpm_verify_exit_code": %s\n}\n' "$install_status" "$verify_status" > "$evidence/project-baseline-verification.json"
+          cat "$evidence/project-baseline-verification.json"
+          exit 0
+
+      - name: Finalize evidence manifest and hashes
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/native-evidence"
+          mkdir -p "$evidence/logs"
+          export EVIDENCE_DIR="$evidence"
+          export EVENT_SHA="$GITHUB_SHA"
+          export EVENT_REF="$GITHUB_REF"
+          export REPOSITORY="$GITHUB_REPOSITORY"
+          export RUN_ID="$GITHUB_RUN_ID"
+          export RUN_ATTEMPT="$GITHUB_RUN_ATTEMPT"
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import platform
+          from pathlib import Path
+
+          root = Path(os.environ["EVIDENCE_DIR"])
+
+          def sha256(path: Path) -> str:
+              h = hashlib.sha256()
+              with path.open("rb") as stream:
+                  for block in iter(lambda: stream.read(1024 * 1024), b""):
+                      h.update(block)
+              return h.hexdigest()
+
+          files = []
+          for path in sorted(p for p in root.rglob("*") if p.is_file()):
+              if path.name in {"ARTIFACT_HASHES.sha256", "NATIVE_RUN_MANIFEST.json"}:
+                  continue
+              files.append({
+                  "path": path.relative_to(root).as_posix(),
+                  "bytes": path.stat().st_size,
+                  "sha256": sha256(path),
+              })
+          manifest = {
+              "repository": os.environ["REPOSITORY"],
+              "frozen_source_sha": os.environ["SOURCE_SHA"],
+              "workflow_event_sha": os.environ["EVENT_SHA"],
+              "workflow_ref": os.environ["EVENT_REF"],
+              "workflow_run_id": os.environ["RUN_ID"],
+              "workflow_run_attempt": os.environ["RUN_ATTEMPT"],
+              "graphify_package": "graphifyy",
+              "graphify_version": os.environ["GRAPHIFY_VERSION"],
+              "graphify_wheel_sha256": os.environ["GRAPHIFY_WHEEL_SHA256"],
+              "execution_mode": "native Graphify CLI; code-only; two clean deterministic passes",
+              "query_logging_disabled": os.environ.get("GRAPHIFY_QUERY_LOG_DISABLE") == "1",
+              "python": platform.python_version(),
+              "platform": platform.platform(),
+              "files": files,
+          }
+          (root / "NATIVE_RUN_MANIFEST.json").write_text(
+              json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+          with (root / "ARTIFACT_HASHES.sha256").open("w", encoding="utf-8") as stream:
+              for item in files:
+                  stream.write(f"{item['sha256']}  {item['path']}\n")
+              manifest_path = root / "NATIVE_RUN_MANIFEST.json"
+              stream.write(f"{sha256(manifest_path)}  NATIVE_RUN_MANIFEST.json\n")
+          PY
+          find "$evidence" -maxdepth 3 -type f -printf '%P\t%s bytes\n' | sort | tee "$evidence/logs/artifact-list.log"
+
+      - name: Upload the native evidence pack
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: outreachr-native-graphify-ef2164f6
+          path: ${{ runner.temp }}/native-evidence/**
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
