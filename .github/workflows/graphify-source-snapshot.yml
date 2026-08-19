@@ -1,0 +1,105 @@
+name: Graphify frozen source snapshot (ephemeral)
+
+on:
+  push:
+    branches:
+      - graphify/native-ef2164f6-20260819
+
+permissions:
+  contents: read
+
+concurrency:
+  group: graphify-source-snapshot-ef2164f6-20260819
+  cancel-in-progress: false
+
+env:
+  SOURCE_SHA: ef2164f6d4d3916fc3266903e4ad00486b1543f4
+  TZ: UTC
+
+jobs:
+  snapshot:
+    name: Materialize frozen tracked source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact frozen source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ef2164f6d4d3916fc3266903e4ad00486b1543f4
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Prove and materialize tracked source
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          test "$actual_sha" = "$SOURCE_SHA"
+          out="$RUNNER_TEMP/outreachr-source-ef2164f6"
+          mkdir -p "$out/source"
+          git archive --format=tar "$SOURCE_SHA" | tar -xf - -C "$out/source"
+          export SNAPSHOT_ROOT="$out"
+          export REPOSITORY="$GITHUB_REPOSITORY"
+          export EVENT_SHA="$GITHUB_SHA"
+          python - <<'PY'
+          import csv
+          import hashlib
+          import json
+          import os
+          from collections import Counter
+          from pathlib import Path
+
+          root = Path(os.environ["SNAPSHOT_ROOT"])
+          source = root / "source"
+
+          def sha256(path: Path) -> str:
+              h = hashlib.sha256()
+              with path.open("rb") as stream:
+                  for block in iter(lambda: stream.read(1024 * 1024), b""):
+                      h.update(block)
+              return h.hexdigest()
+
+          files = []
+          for path in sorted(p for p in source.rglob("*") if p.is_file()):
+              rel = path.relative_to(source).as_posix()
+              files.append({
+                  "path": rel,
+                  "bytes": path.stat().st_size,
+                  "extension": path.suffix.lower() or "[none]",
+                  "sha256": sha256(path),
+              })
+
+          with (root / "SOURCE_FILES.csv").open("w", encoding="utf-8", newline="") as stream:
+              writer = csv.DictWriter(stream, fieldnames=["path", "bytes", "extension", "sha256"])
+              writer.writeheader()
+              writer.writerows(files)
+
+          manifest = {
+              "repository": os.environ["REPOSITORY"],
+              "frozen_source_sha": os.environ["SOURCE_SHA"],
+              "workflow_event_sha": os.environ["EVENT_SHA"],
+              "file_count": len(files),
+              "total_bytes": sum(item["bytes"] for item in files),
+              "extensions": dict(sorted(Counter(item["extension"] for item in files).items())),
+              "source_tree": os.popen("git rev-parse HEAD^{tree}").read().strip(),
+          }
+          (root / "SOURCE_SNAPSHOT_MANIFEST.json").write_text(
+              json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+          with (root / "SOURCE_HASHES.sha256").open("w", encoding="utf-8") as stream:
+              for item in files:
+                  stream.write(f"{item['sha256']}  source/{item['path']}\n")
+              for name in ("SOURCE_FILES.csv", "SOURCE_SNAPSHOT_MANIFEST.json"):
+                  stream.write(f"{sha256(root / name)}  {name}\n")
+          PY
+          find "$out" -type f -printf '%P\t%s bytes\n' | sort > "$out/SNAPSHOT_CONTENTS.txt"
+
+      - name: Upload frozen source snapshot
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: outreachr-source-ef2164f6
+          path: ${{ runner.temp }}/outreachr-source-ef2164f6/**
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 2
