@@ -1,17 +1,17 @@
 {
   "artifact_expired": false,
-  "artifact_id": 9367773196,
+  "artifact_id": 9367992214,
   "artifact_name": "outreachr-native-graphify-ef2164f6",
-  "artifact_size_in_bytes": 1040944,
+  "artifact_size_in_bytes": 1927813,
   "branch": "graphify/native-ef2164f6-20260819",
   "frozen_source_sha": "ef2164f6d4d3916fc3266903e4ad00486b1543f4",
   "graphify_version": "0.9.46",
-  "pointer_event_sha": "361298bce75f3af4279d05d295abd6ccdc86e6a1",
+  "pointer_event_sha": "d949ce675029b943d4c4138e5641a2ec246d5804",
   "repository": "rndrntwrk/outreachr",
-  "workflow_conclusion": "failure",
+  "workflow_conclusion": "success",
   "workflow_file": "graphify-native-pilot.yml",
   "workflow_run_attempt": 1,
-  "workflow_run_id": 32259794806,
+  "workflow_run_id": 32260267029,
   "workflow_status": "completed",
-  "workflow_url": "https://github.com/rndrntwrk/outreachr/actions/runs/32259794806"
+  "workflow_url": "https://github.com/rndrntwrk/outreachr/actions/runs/32260267029"
 }
