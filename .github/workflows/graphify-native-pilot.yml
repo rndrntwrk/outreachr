@@ -37,7 +37,7 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Prove source freeze and initialize evidence directory
+      - name: Prove source freeze and initialize evidence
         shell: bash
         run: |
           set -euo pipefail
@@ -59,7 +59,7 @@ jobs:
           git submodule status --recursive > "$evidence/logs/submodules.log" 2>&1 || true
           git lfs ls-files > "$evidence/logs/git-lfs-files.log" 2>&1 || true
 
-      - name: Install and cryptographically verify Graphify
+      - name: Install and verify Graphify
         shell: bash
         run: |
           set -euo pipefail
@@ -93,9 +93,11 @@ jobs:
           evidence="$RUNNER_TEMP/native-evidence"
           source "$RUNNER_TEMP/graphify-venv/bin/activate"
           rm -rf graphify-out graph.json
-          { time graphify extract . --code-only --force --timing --max-workers 1; } 2>&1 | tee "$evidence/logs/graphify-pass-1.log"
+          { time graphify extract . --code-only --force --timing --max-workers 1; } 2>&1 | tee "$evidence/logs/graphify-pass-1-extract.log"
+          { time graphify cluster-only . --no-label --timing; } 2>&1 | tee "$evidence/logs/graphify-pass-1-cluster.log"
           test -s graphify-out/graph.json
           test -s graphify-out/GRAPH_REPORT.md
+          test -s graphify-out/graph.html
           cp -a graphify-out "$evidence/run-1"
 
       - name: Run independent native Graphify pass 2
@@ -105,9 +107,11 @@ jobs:
           evidence="$RUNNER_TEMP/native-evidence"
           source "$RUNNER_TEMP/graphify-venv/bin/activate"
           rm -rf graphify-out graph.json
-          { time graphify extract . --code-only --force --timing --max-workers 1; } 2>&1 | tee "$evidence/logs/graphify-pass-2.log"
+          { time graphify extract . --code-only --force --timing --max-workers 1; } 2>&1 | tee "$evidence/logs/graphify-pass-2-extract.log"
+          { time graphify cluster-only . --no-label --timing; } 2>&1 | tee "$evidence/logs/graphify-pass-2-cluster.log"
           test -s graphify-out/graph.json
           test -s graphify-out/GRAPH_REPORT.md
+          test -s graphify-out/graph.html
           cp -a graphify-out "$evidence/run-2"
 
       - name: Challenge the native graph
@@ -167,7 +171,7 @@ jobs:
               raise SystemExit("one or more graphify query commands failed")
           PY
 
-      - name: Compare both native runs and inventory the corpus
+      - name: Compare native runs and inventory the corpus
         shell: bash
         run: |
           set -euo pipefail
@@ -191,19 +195,9 @@ jobs:
                       h.update(block)
               return h.hexdigest()
 
-          def load_graph(path: Path):
-              data = json.loads(path.read_text(encoding="utf-8"))
-              nodes = data.get("nodes", [])
-              edges = data.get("edges", [])
-              if isinstance(nodes, dict):
-                  nodes = list(nodes.values())
-              if isinstance(edges, dict):
-                  edges = list(edges.values())
-              return data, nodes, edges
-
           volatile = {
               "generated_at", "created_at", "updated_at", "timestamp", "timing",
-              "duration", "duration_ms", "elapsed", "cost", "run_id",
+              "duration", "duration_ms", "elapsed", "cost", "run_id", "built_at",
           }
 
           def scrub(value):
@@ -217,15 +211,17 @@ jobs:
           canonical_payloads = []
           for run_name in ("run-1", "run-2"):
               graph_path = evidence / run_name / "graph.json"
-              data, nodes, edges = load_graph(graph_path)
-              node_payload = sorted(
-                  (json.dumps(scrub(node), sort_keys=True, separators=(",", ":"), ensure_ascii=False) for node in nodes)
-              )
-              edge_payload = sorted(
-                  (json.dumps(scrub(edge), sort_keys=True, separators=(",", ":"), ensure_ascii=False) for edge in edges)
-              )
+              data = json.loads(graph_path.read_text(encoding="utf-8"))
+              nodes = data.get("nodes", [])
+              links = data.get("links", data.get("edges", []))
+              if isinstance(nodes, dict):
+                  nodes = list(nodes.values())
+              if isinstance(links, dict):
+                  links = list(links.values())
+              node_payload = sorted(json.dumps(scrub(n), sort_keys=True, separators=(",", ":"), ensure_ascii=False) for n in nodes)
+              link_payload = sorted(json.dumps(scrub(e), sort_keys=True, separators=(",", ":"), ensure_ascii=False) for e in links)
               canonical = json.dumps(
-                  {"nodes": node_payload, "edges": edge_payload},
+                  {"nodes": node_payload, "links": link_payload},
                   sort_keys=True,
                   separators=(",", ":"),
                   ensure_ascii=False,
@@ -236,9 +232,9 @@ jobs:
                   "graph_json_sha256": sha256(graph_path),
                   "canonical_structure_sha256": hashlib.sha256(canonical).hexdigest(),
                   "node_count": len(nodes),
-                  "edge_count": len(edges),
+                  "edge_count": len(links),
                   "node_types": dict(sorted(Counter(str(n.get("type", n.get("kind", "unknown"))) for n in nodes).items())),
-                  "edge_relations": dict(sorted(Counter(str(e.get("relation", e.get("type", "unknown"))) for e in edges).items())),
+                  "edge_relations": dict(sorted(Counter(str(e.get("relation", e.get("type", "unknown"))) for e in links).items())),
               })
 
           comparison = {
@@ -258,11 +254,10 @@ jobs:
           rows = []
           for path in paths:
               stat = path.stat()
-              suffix = path.suffix.lower() or "[none]"
               rows.append({
                   "path": path.as_posix(),
                   "bytes": stat.st_size,
-                  "extension": suffix,
+                  "extension": path.suffix.lower() or "[none]",
                   "tracked": "yes",
               })
           with (evidence / "tracked-source-inventory.csv").open("w", encoding="utf-8", newline="") as stream:
@@ -355,7 +350,7 @@ jobs:
               "graphify_package": "graphifyy",
               "graphify_version": os.environ["GRAPHIFY_VERSION"],
               "graphify_wheel_sha256": os.environ["GRAPHIFY_WHEEL_SHA256"],
-              "execution_mode": "native Graphify CLI; code-only; two clean deterministic passes",
+              "execution_mode": "native Graphify CLI; code-only; two clean passes; cluster-only reporting",
               "query_logging_disabled": os.environ.get("GRAPHIFY_QUERY_LOG_DISABLE") == "1",
               "python": platform.python_version(),
               "platform": platform.platform(),
