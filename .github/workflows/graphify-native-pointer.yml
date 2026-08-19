@@ -1,0 +1,143 @@
+name: Graphify native pointer (ephemeral)
+
+on:
+  push:
+    branches:
+      - graphify/native-ef2164f6-20260819
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: graphify-native-pointer-ef2164f6-20260819
+  cancel-in-progress: true
+
+jobs:
+  publish-pointer:
+    name: Publish Graphify run pointer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    steps:
+      - name: Wait for the matching native Graphify run
+        id: locate
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_WORKFLOW: graphify-native-pilot.yml
+          TARGET_ARTIFACT: outreachr-native-graphify-ef2164f6
+        run: |
+          set -euo pipefail
+          pointer="$RUNNER_TEMP/graphify-native-run-pointer.json"
+          found=0
+          for attempt in $(seq 1 280); do
+            runs_json="$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/$TARGET_WORKFLOW/runs" -f event=push -f branch="$GITHUB_REF_NAME" -f per_page=20)"
+            run_line="$(RUNS_JSON="$runs_json" python - <<'PY'
+          import json
+          import os
+          data = json.loads(os.environ["RUNS_JSON"])
+          target = os.environ["GITHUB_SHA"]
+          for run in data.get("workflow_runs", []):
+              if run.get("head_sha") == target:
+                  print("\t".join([
+                      str(run.get("id", "")),
+                      str(run.get("status", "")),
+                      str(run.get("conclusion") or ""),
+                      str(run.get("html_url", "")),
+                      str(run.get("run_attempt", "")),
+                  ]))
+                  break
+          PY
+            )"
+            if [ -n "$run_line" ]; then
+              IFS=$'\t' read -r run_id status conclusion run_url run_attempt <<< "$run_line"
+              echo "native run $run_id status=$status conclusion=$conclusion"
+              if [ "$status" = "completed" ]; then
+                artifact_id=""
+                artifact_size=""
+                artifact_expired=""
+                for artifact_attempt in $(seq 1 40); do
+                  artifacts_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts")"
+                  artifact_line="$(ARTIFACTS_JSON="$artifacts_json" python - <<'PY'
+          import json
+          import os
+          data = json.loads(os.environ["ARTIFACTS_JSON"])
+          target = os.environ["TARGET_ARTIFACT"]
+          for artifact in data.get("artifacts", []):
+              if artifact.get("name") == target:
+                  print("\t".join([
+                      str(artifact.get("id", "")),
+                      str(artifact.get("size_in_bytes", "")),
+                      str(bool(artifact.get("expired", False))).lower(),
+                  ]))
+                  break
+          PY
+                  )"
+                  if [ -n "$artifact_line" ]; then
+                    IFS=$'\t' read -r artifact_id artifact_size artifact_expired <<< "$artifact_line"
+                    break
+                  fi
+                  sleep 5
+                done
+                export RUN_ID="$run_id" STATUS="$status" CONCLUSION="$conclusion" RUN_URL="$run_url" RUN_ATTEMPT="$run_attempt"
+                export ARTIFACT_ID="$artifact_id" ARTIFACT_SIZE="$artifact_size" ARTIFACT_EXPIRED="$artifact_expired"
+                export TARGET_ARTIFACT TARGET_WORKFLOW
+                python - <<'PY' > "$pointer"
+          import json
+          import os
+          payload = {
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "branch": os.environ["GITHUB_REF_NAME"],
+              "pointer_event_sha": os.environ["GITHUB_SHA"],
+              "workflow_file": os.environ["TARGET_WORKFLOW"],
+              "workflow_run_id": int(os.environ["RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["RUN_ATTEMPT"] or "1"),
+              "workflow_status": os.environ["STATUS"],
+              "workflow_conclusion": os.environ["CONCLUSION"],
+              "workflow_url": os.environ["RUN_URL"],
+              "artifact_name": os.environ["TARGET_ARTIFACT"],
+              "artifact_id": int(os.environ["ARTIFACT_ID"]) if os.environ["ARTIFACT_ID"] else None,
+              "artifact_size_in_bytes": int(os.environ["ARTIFACT_SIZE"]) if os.environ["ARTIFACT_SIZE"] else None,
+              "artifact_expired": os.environ["ARTIFACT_EXPIRED"] == "true",
+              "frozen_source_sha": "ef2164f6d4d3916fc3266903e4ad00486b1543f4",
+              "graphify_version": "0.9.46",
+          }
+          print(json.dumps(payload, indent=2, sort_keys=True))
+          PY
+                echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+                echo "artifact_id=$artifact_id" >> "$GITHUB_OUTPUT"
+                echo "conclusion=$conclusion" >> "$GITHUB_OUTPUT"
+                found=1
+                break
+              fi
+            else
+              echo "matching native run not visible yet"
+            fi
+            sleep 15
+          done
+          if [ "$found" -ne 1 ]; then
+            echo "matching native Graphify run did not complete within the pointer gate" >&2
+            exit 1
+          fi
+
+      - name: Check out the isolated execution branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: graphify/native-ef2164f6-20260819
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Commit only the run pointer
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp "$RUNNER_TEMP/graphify-native-run-pointer.json" .graphify-native-run-pointer.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .graphify-native-run-pointer.json
+          if git diff --cached --quiet; then
+            echo "pointer already current"
+            exit 0
+          fi
+          git commit -m "chore: record native Graphify evidence pointer"
+          git push origin "HEAD:graphify/native-ef2164f6-20260819"
