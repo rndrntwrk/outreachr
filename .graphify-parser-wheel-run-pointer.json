@@ -1,8 +1,8 @@
 {
   "repository": "rndrntwrk/outreachr",
-  "run_id": "32317807896",
+  "run_id": "32317915184",
   "run_attempt": "1",
-  "event_sha": "3b483a3113ad5d2790ea92e7e95e9cd963d459c0",
-  "artifact_name": "graphify-parser-wheels-python313",
+  "event_sha": "daa12de4782fd97621ae9fa0b8b4018afba785e1",
+  "artifact_name": "graphify-parser-wheels-python313-json",
   "job_status": "success"
 }
